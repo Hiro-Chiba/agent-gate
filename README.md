@@ -4,8 +4,6 @@
 
 AI-powered CLAUDE.md enforcer for Claude Code.
 
-[Architecture](docs/architecture.md)
-
 ---
 
 Prevents Claude Code from forgetting CLAUDE.md rules during long sessions caused by context compression. AI validates every tool operation against your project rules and blocks violations.

@@ -12,6 +12,7 @@ coverage
 # Personal / hobby convention files (not for OSS consumers)
 AGENTS.md
 docs/reddit-post-*.md
+docs/architecture.md
 tasks/
 lessons.md
 *.tgz

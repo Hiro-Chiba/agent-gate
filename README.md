@@ -154,6 +154,26 @@ agent-gate enforces in any tool that exposes a pre-tool-use hook. As of v1:
 
 Tools without a hook surface (Copilot, Cline, Aider, Codex web, Replit, Devin) can still benefit from agent-gate as a rule source linter or via downstream sync (rulesync, symlinks), but cannot be enforced at runtime.
 
+## CLAUDE.md Doctor
+
+Run `agent-gate lint` from a project root to audit your instruction files for AI-friendliness. The doctor walks the same 8 file formats the runtime reads, then surfaces:
+
+- **Empty files** that would make the AI think no rules exist.
+- **Files with no concrete rules** (no imperatives, no bullets, no numbered items).
+- **Ambiguous modifiers** like "where possible", "as needed", "適切に", "なるべく", "可能な限り", "必要に応じて". AI judgment cannot enforce these reliably; the doctor suggests replacing them with a concrete condition or threshold.
+
+```text
+$ agent-gate lint
+/p/CLAUDE.md
+  [warning] no-concrete-rules: No imperatives ...
+  [info] ambiguous-modifier (line 5): Ambiguous modifier "適切に" ...
+      > - エラーは適切に扱う
+
+1 finding.
+```
+
+Exit code is 1 if any finding has severity `error`, otherwise 0, so the command can run in CI.
+
 ## Observability
 
 Set `AGENT_GATE_LOG=1` to append every decision to `~/.agent-gate/log.jsonl`. Each line is a JSON object with timestamp, adapter, tool, decision, reason, source (`deterministic` / `ai`), and `ruleId` when a deterministic rule fired.

@@ -64,4 +64,32 @@ describe('preventBashSecretWrite', () => {
     })
     expect(verdict.kind).toBe('allow')
   })
+
+  it('blocks heredoc redirected to .env', () => {
+    const verdict = preventBashSecretWrite.check('Bash', {
+      command: 'cat <<EOF > .env\nSECRET=abc\nEOF',
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
+  it('blocks heredoc with quoted delimiter to .env.production', () => {
+    const verdict = preventBashSecretWrite.check('Bash', {
+      command: "cat <<'EOF' >> .env.production\nA=1\nEOF",
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
+  it('blocks redirect after && (multi-statement)', () => {
+    const verdict = preventBashSecretWrite.check('Bash', {
+      command: 'npm run build && echo SECRET=x > .env',
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
+  it('still allows heredoc to a non-secret file', () => {
+    const verdict = preventBashSecretWrite.check('Bash', {
+      command: 'cat <<EOF > /tmp/output.txt\nhi\nEOF',
+    })
+    expect(verdict.kind).toBe('allow')
+  })
 })

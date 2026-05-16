@@ -1,4 +1,5 @@
 import { DeterministicRule, RuleVerdict } from '../types'
+import { extractHeredocTargets, splitStatements } from '../bashAnalysis'
 
 const TEMPLATE_SUFFIXES = ['.example', '.sample', '.template', '.dist']
 
@@ -29,19 +30,19 @@ function isSecretTargetPath(rawPath: string): boolean {
 }
 
 /**
- * Extracts files that the command writes to via redirect (>, >>) or `tee`.
- * Conservative: matches the next non-flag token after the operator/word.
+ * Extracts every file the command writes to:
+ *   1. Standard redirects (`>`, `>>`, `1>`, `2>`, `&>`)
+ *   2. `tee [-a] FILE [FILE ...]`
+ *   3. Heredoc redirects (`cat <<EOF > file`)
  */
 function extractWriteTargets(command: string): string[] {
   const targets: string[] = []
 
-  // Redirect operators: >, >>, &>, &>>, 1>, 2> etc.
   const redirectRe = /[12&]?>>?\s*([^\s;|&<>]+)/g
   for (const m of command.matchAll(redirectRe)) {
     if (m[1]) targets.push(m[1])
   }
 
-  // tee [-a] FILE [FILE ...]
   const teeRe = /\btee\b(?:\s+-[A-Za-z]+)*\s+([^\s;|&<>]+(?:\s+[^\s;|&<>]+)*)/g
   for (const m of command.matchAll(teeRe)) {
     if (m[1]) {
@@ -49,6 +50,10 @@ function extractWriteTargets(command: string): string[] {
         if (f && !f.startsWith('-')) targets.push(f)
       }
     }
+  }
+
+  for (const t of extractHeredocTargets(command)) {
+    targets.push(t)
   }
 
   return targets
@@ -61,12 +66,16 @@ export const preventBashSecretWrite: DeterministicRule = {
     const command = toolInput.command
     if (typeof command !== 'string') return { kind: 'allow' }
 
-    const targets = extractWriteTargets(command)
-    for (const target of targets) {
-      if (isSecretTargetPath(target)) {
-        return {
-          kind: 'block',
-          reason: `Refusing to write to a likely secret/credential file via shell redirect: ${target}. If this is intentional, run the command manually outside of the agent.`,
+    // Inspect each top-level statement; heredoc spans newlines so the
+    // statement splitter preserves the heredoc body inside its segment.
+    for (const stmt of splitStatements(command)) {
+      const targets = extractWriteTargets(stmt)
+      for (const target of targets) {
+        if (isSecretTargetPath(target)) {
+          return {
+            kind: 'block',
+            reason: `Refusing to write to a likely secret/credential file via shell redirect: ${target}. If this is intentional, run the command manually outside of the agent.`,
+          }
         }
       }
     }

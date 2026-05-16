@@ -69,4 +69,49 @@ describe('preventRmRfRoot', () => {
     const verdict = preventRmRfRoot.check('Edit', { command: 'rm -rf /' })
     expect(verdict.kind).toBe('allow')
   })
+
+  it('blocks rm -rf hidden behind a semicolon statement', () => {
+    const verdict = preventRmRfRoot.check('Bash', {
+      command: 'echo ok; rm -rf /',
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
+  it('blocks rm -rf hidden behind &&', () => {
+    const verdict = preventRmRfRoot.check('Bash', {
+      command: 'echo ok && rm -rf /etc',
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
+  it('blocks rm -rf $(echo /) (command substitution target)', () => {
+    const verdict = preventRmRfRoot.check('Bash', {
+      command: 'rm -rf $(echo /)',
+    })
+    expect(verdict.kind).toBe('block')
+    if (verdict.kind === 'block') {
+      expect(verdict.reason).toMatch(/substitution|variable|obfuscat/i)
+    }
+  })
+
+  it('blocks rm -rf `echo /` (backtick substitution)', () => {
+    const verdict = preventRmRfRoot.check('Bash', {
+      command: 'rm -rf `echo /`',
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
+  it('blocks rm -rf $TARGET (unresolved variable)', () => {
+    const verdict = preventRmRfRoot.check('Bash', {
+      command: 'rm -rf $TARGET',
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
+  it('still allows rm -rf ./build even amid multi-statement', () => {
+    const verdict = preventRmRfRoot.check('Bash', {
+      command: 'npm run build && rm -rf ./build',
+    })
+    expect(verdict.kind).toBe('allow')
+  })
 })

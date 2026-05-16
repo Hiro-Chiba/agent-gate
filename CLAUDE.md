@@ -1,4 +1,4 @@
-# claudegate
+# agent-gate
 
 ## Project Goal
 

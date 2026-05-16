@@ -2,7 +2,7 @@
 
 ## Overview
 
-claudegate v2 is a TypeScript application that runs as a Claude Code PreToolUse hook.
+agent-gate v2 is a TypeScript application that runs as a Claude Code PreToolUse hook.
 It fires before `Edit`/`Write`/`Bash` tool execution, validates the operation against CLAUDE.md rules using AI, and blocks violations.
 
 ## Hook Flow
@@ -10,7 +10,7 @@ It fires before `Edit`/`Write`/`Bash` tool execution, validates the operation ag
 ```mermaid
 sequenceDiagram
     participant CC as Claude Code
-    participant Hook as claudegate
+    participant Hook as agent-gate
     participant FS as File System
     participant AI as AI Model
 
@@ -38,7 +38,7 @@ sequenceDiagram
 ```mermaid
 graph TD
     subgraph CLI
-        A[cli/claudegate.ts<br/>stdin → process → stdout]
+        A[cli/agent-gate.ts<br/>stdin → process → stdout]
     end
 
     subgraph Core
@@ -101,7 +101,7 @@ graph LR
 
 ```mermaid
 flowchart TD
-    Start[Start] --> CheckAPI{CLAUDEGATE_API_KEY<br/>set?}
+    Start[Start] --> CheckAPI{AGENT_GATE_API_KEY<br/>set?}
     CheckAPI -->|Yes| API[AnthropicApi<br/>Direct API call]
     CheckAPI -->|No| CheckSystem{USE_SYSTEM_CLAUDE<br/>= true?}
     CheckSystem -->|Yes| PATH[claude from PATH]
@@ -145,10 +145,10 @@ flowchart TD
 
 | Variable | Default | Description |
 |---|---|---|
-| `CLAUDEGATE_MODEL` | `claude-sonnet-4-6` | Validation model |
-| `CLAUDEGATE_API_KEY` | — | Anthropic API key |
-| `CLAUDEGATE_COOLDOWN` | `0` | Cooldown in seconds |
-| `CLAUDEGATE_DISABLED` | `false` | Disable flag |
+| `AGENT_GATE_MODEL` | `claude-sonnet-4-6` | Validation model |
+| `AGENT_GATE_API_KEY` | — | Anthropic API key |
+| `AGENT_GATE_COOLDOWN` | `0` | Cooldown in seconds |
+| `AGENT_GATE_DISABLED` | `false` | Disable flag |
 | `USE_SYSTEM_CLAUDE` | `false` | `true` forces PATH claude (default: ~/.claude/local/claude with PATH fallback) |
 
 ## Installation
@@ -157,5 +157,5 @@ flowchart TD
 ~/.claude/settings.json
 └── hooks.PreToolUse[]
     └── matcher: "Edit|Write|Bash"
-        └── command: "node /path/to/claudegate/dist/cli/claudegate.js"
+        └── command: "node /path/to/agent-gate/dist/cli/agent-gate.js"
 ```

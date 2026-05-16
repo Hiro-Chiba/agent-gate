@@ -28,7 +28,7 @@ export function defaultSettingsPath(): string {
 
 export function resolveHookCommand(resolvedScriptPath: string): string {
   if (!resolvedScriptPath) {
-    return 'claudegate'
+    return 'agent-gate'
   }
   return `node ${resolvedScriptPath}`
 }
@@ -49,9 +49,9 @@ function writeSettings(settingsFile: string, settings: ClaudeSettings): void {
   writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n')
 }
 
-function isClaudegateEntry(entry: HookMatcherEntry): boolean {
+function isAgentGateEntry(entry: HookMatcherEntry): boolean {
   return (entry.hooks ?? []).some(
-    (h) => typeof h.command === 'string' && h.command.includes('claudegate')
+    (h) => typeof h.command === 'string' && h.command.includes('agent-gate')
   )
 }
 
@@ -65,7 +65,7 @@ export function installHook(
   if (!settings.hooks) settings.hooks = {}
   const preToolUse = settings.hooks.PreToolUse ?? []
 
-  const filtered = preToolUse.filter((entry) => !isClaudegateEntry(entry))
+  const filtered = preToolUse.filter((entry) => !isAgentGateEntry(entry))
 
   filtered.push({
     matcher,
@@ -89,7 +89,7 @@ export function uninstallHook(
 
   if (settings.hooks?.PreToolUse) {
     const cleaned = settings.hooks.PreToolUse.filter(
-      (entry) => !isClaudegateEntry(entry)
+      (entry) => !isAgentGateEntry(entry)
     )
 
     if (cleaned.length === 0) {

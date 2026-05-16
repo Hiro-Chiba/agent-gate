@@ -10,20 +10,20 @@ import {
   defaultSettingsPath,
 } from './installer'
 
-const HELP_TEXT = `claudegate — AI-powered CLAUDE.md enforcer for Claude Code
+const HELP_TEXT = `agent-gate — AI-powered CLAUDE.md enforcer for Claude Code
 
 Usage:
-  claudegate              Run as a PreToolUse hook (reads JSON from stdin)
-  claudegate install      Register the hook in ~/.claude/settings.json
-  claudegate uninstall    Remove the hook from ~/.claude/settings.json
-  claudegate --help       Show this help
-  claudegate --version    Show version
+  agent-gate              Run as a PreToolUse hook (reads JSON from stdin)
+  agent-gate install      Register the hook in ~/.claude/settings.json
+  agent-gate uninstall    Remove the hook from ~/.claude/settings.json
+  agent-gate --help       Show this help
+  agent-gate --version    Show version
 
 Environment:
-  CLAUDEGATE_MODEL        Validation model (default: claude-sonnet-4-6)
-  CLAUDEGATE_API_KEY      Use Anthropic API directly when set
-  CLAUDEGATE_COOLDOWN     Cooldown in seconds between validations (default: 0)
-  CLAUDEGATE_DISABLED     Set to "true" to disable the hook
+  AGENT_GATE_MODEL        Validation model (default: claude-sonnet-4-6)
+  AGENT_GATE_API_KEY      Use Anthropic API directly when set
+  AGENT_GATE_COOLDOWN     Cooldown in seconds between validations (default: 0)
+  AGENT_GATE_DISABLED     Set to "true" to disable the hook
   USE_SYSTEM_CLAUDE           Set to "true" to force PATH claude binary
 `
 
@@ -44,7 +44,7 @@ function runHookMode(): void {
       const result = await run(inputData)
       console.log(JSON.stringify(result))
     } catch (error) {
-      console.error('claudegate error:', error)
+      console.error('agent-gate error:', error)
     } finally {
       process.exit(0)
     }
@@ -67,7 +67,7 @@ function runInstall(): void {
 
   installHook(hookCommand, settingsFile)
 
-  console.log(`claudegate installed.`)
+  console.log(`agent-gate installed.`)
   console.log(`  settings: ${settingsFile}`)
   console.log(`  command:  ${hookCommand}`)
   console.log(`Restart Claude Code to activate.`)
@@ -77,7 +77,7 @@ function runUninstall(): void {
   const settingsFile = defaultSettingsPath()
   uninstallHook(settingsFile)
 
-  console.log(`claudegate uninstalled.`)
+  console.log(`agent-gate uninstalled.`)
   console.log(`  settings: ${settingsFile}`)
   console.log(`Restart Claude Code to deactivate.`)
 }

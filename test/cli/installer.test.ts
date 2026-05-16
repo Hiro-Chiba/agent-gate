@@ -23,22 +23,22 @@ function readJson(path: string): Record<string, unknown> {
 
 describe('resolveHookCommand', () => {
   it('returns node <abs path> when a resolved path is given', () => {
-    const result = resolveHookCommand('/opt/claudegate/dist/cli/claudegate.js')
-    expect(result).toBe('node /opt/claudegate/dist/cli/claudegate.js')
+    const result = resolveHookCommand('/opt/agent-gate/dist/cli/agent-gate.js')
+    expect(result).toBe('node /opt/agent-gate/dist/cli/agent-gate.js')
   })
 
   it('returns node <abs path> for any non-empty resolved path (realpath of bin symlink)', () => {
     const result = resolveHookCommand(
-      '/usr/local/lib/node_modules/claudegate/dist/cli/claudegate.js'
+      '/usr/local/lib/node_modules/agent-gate/dist/cli/agent-gate.js'
     )
     expect(result).toBe(
-      'node /usr/local/lib/node_modules/claudegate/dist/cli/claudegate.js'
+      'node /usr/local/lib/node_modules/agent-gate/dist/cli/agent-gate.js'
     )
   })
 
-  it('falls back to plain "claudegate" when path is empty (realpath failure)', () => {
+  it('falls back to plain "agent-gate" when path is empty (realpath failure)', () => {
     const result = resolveHookCommand('')
-    expect(result).toBe('claudegate')
+    expect(result).toBe('agent-gate')
   })
 })
 
@@ -53,7 +53,7 @@ describe('installHook', () => {
   })
 
   it('creates settings.json with PreToolUse hook when file does not exist', () => {
-    installHook('claudegate', SETTINGS_FILE)
+    installHook('agent-gate', SETTINGS_FILE)
 
     expect(existsSync(SETTINGS_FILE)).toBe(true)
     const settings = readJson(SETTINGS_FILE) as {
@@ -61,7 +61,7 @@ describe('installHook', () => {
     }
     expect(settings.hooks.PreToolUse).toHaveLength(1)
     expect(settings.hooks.PreToolUse[0].matcher).toBe(DEFAULT_HOOK_MATCHER)
-    expect(settings.hooks.PreToolUse[0].hooks[0].command).toBe('claudegate')
+    expect(settings.hooks.PreToolUse[0].hooks[0].command).toBe('agent-gate')
   })
 
   it('preserves other settings when adding hook', () => {
@@ -73,7 +73,7 @@ describe('installHook', () => {
       })
     )
 
-    installHook('claudegate', SETTINGS_FILE)
+    installHook('agent-gate', SETTINGS_FILE)
 
     const settings = readJson(SETTINGS_FILE) as {
       theme: string
@@ -85,15 +85,15 @@ describe('installHook', () => {
     expect(settings.hooks.PreToolUse).toHaveLength(1)
   })
 
-  it('replaces existing claudegate entry instead of duplicating', () => {
-    installHook('node /old/path/claudegate.js', SETTINGS_FILE)
-    installHook('claudegate', SETTINGS_FILE)
+  it('replaces existing agent-gate entry instead of duplicating', () => {
+    installHook('node /old/path/agent-gate.js', SETTINGS_FILE)
+    installHook('agent-gate', SETTINGS_FILE)
 
     const settings = readJson(SETTINGS_FILE) as {
       hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> }
     }
     expect(settings.hooks.PreToolUse).toHaveLength(1)
-    expect(settings.hooks.PreToolUse[0].hooks[0].command).toBe('claudegate')
+    expect(settings.hooks.PreToolUse[0].hooks[0].command).toBe('agent-gate')
   })
 
   it('preserves unrelated PreToolUse hooks', () => {
@@ -111,7 +111,7 @@ describe('installHook', () => {
       })
     )
 
-    installHook('claudegate', SETTINGS_FILE)
+    installHook('agent-gate', SETTINGS_FILE)
 
     const settings = readJson(SETTINGS_FILE) as {
       hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> }
@@ -119,12 +119,12 @@ describe('installHook', () => {
     expect(settings.hooks.PreToolUse).toHaveLength(2)
     const commands = settings.hooks.PreToolUse.map((e) => e.hooks[0].command)
     expect(commands).toContain('other-hook')
-    expect(commands).toContain('claudegate')
+    expect(commands).toContain('agent-gate')
   })
 
   it('handles empty settings.json content', () => {
     writeFileSync(SETTINGS_FILE, '')
-    installHook('claudegate', SETTINGS_FILE)
+    installHook('agent-gate', SETTINGS_FILE)
 
     const settings = readJson(SETTINGS_FILE) as {
       hooks: { PreToolUse: unknown[] }
@@ -148,8 +148,8 @@ describe('uninstallHook', () => {
     expect(existsSync(SETTINGS_FILE)).toBe(false)
   })
 
-  it('removes the claudegate hook entry', () => {
-    installHook('claudegate', SETTINGS_FILE)
+  it('removes the agent-gate hook entry', () => {
+    installHook('agent-gate', SETTINGS_FILE)
     uninstallHook(SETTINGS_FILE)
 
     const settings = readJson(SETTINGS_FILE) as { hooks?: unknown }
@@ -165,7 +165,7 @@ describe('uninstallHook', () => {
           PreToolUse: [
             {
               matcher: 'Edit|Write|Bash',
-              hooks: [{ type: 'command', command: 'claudegate' }],
+              hooks: [{ type: 'command', command: 'agent-gate' }],
             },
             {
               matcher: 'Edit',
@@ -187,8 +187,8 @@ describe('uninstallHook', () => {
     expect(settings.hooks.PreToolUse[0].hooks[0].command).toBe('other-hook')
   })
 
-  it('deletes hooks key entirely when all entries were claudegate', () => {
-    installHook('claudegate', SETTINGS_FILE)
+  it('deletes hooks key entirely when all entries were agent-gate', () => {
+    installHook('agent-gate', SETTINGS_FILE)
     uninstallHook(SETTINGS_FILE)
 
     const settings = readJson(SETTINGS_FILE)

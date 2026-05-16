@@ -1,12 +1,12 @@
 {
-  "name": "claudegate",
+  "name": "agent-gate",
   "version": "1.0.0",
   "description": "AI-powered CLAUDE.md enforcer for Claude Code hooks",
   "author": "Hiro-Chiba",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Hiro-Chiba/claudegate.git"
+    "url": "git+https://github.com/Hiro-Chiba/agent-gate.git"
   },
   "keywords": [
     "claude",
@@ -22,7 +22,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "claudegate": "dist/cli/claudegate.js"
+    "agent-gate": "dist/cli/agent-gate.js"
   },
   "files": [
     "dist",

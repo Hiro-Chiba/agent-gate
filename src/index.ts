@@ -45,6 +45,15 @@ export type { Adapter, ReadHistoryOptions } from './adapters/Adapter'
 export { CompositeModelClient } from './validation/models/CompositeModelClient'
 export type { CompositeModelClientOptions } from './validation/models/CompositeModelClient'
 
+// Doctor (CLAUDE.md linter)
+export { lintRuleSources } from './doctor/lintRuleSources'
+export { formatFindings } from './doctor/formatFindings'
+export type {
+  Finding,
+  FindingCode,
+  Severity,
+} from './doctor/findings'
+
 // Observability
 export { EventBus } from './observability/eventBus'
 export { JsonlFileSink } from './observability/sinks/JsonlFileSink'

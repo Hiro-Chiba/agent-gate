@@ -17,6 +17,9 @@ import {
 import { Adapter } from '../adapters/Adapter'
 import { readStats, formatStats } from '../observability/stats'
 import { defaultLogPath } from '../observability/decisionLogger'
+import { collectRuleSources } from '../collector/collectRuleSources'
+import { lintRuleSources } from '../doctor/lintRuleSources'
+import { formatFindings } from '../doctor/formatFindings'
 
 const HELP_TEXT = `agent-gate — runtime enforcer for AI coding agent rules
 
@@ -26,6 +29,7 @@ Usage:
   agent-gate install                Register the hook in ~/.claude/settings.json
   agent-gate uninstall              Remove the hook from ~/.claude/settings.json
   agent-gate stats                  Summarize decisions from the log file
+  agent-gate lint                   Audit CLAUDE.md / AGENTS.md / etc. for AI-friendliness
   agent-gate --help                 Show this help
   agent-gate --version              Show version
 
@@ -180,6 +184,9 @@ function main(): void {
     case 'stats':
       runStats()
       return
+    case 'lint':
+      runLint()
+      return
     default:
       console.error(`Unknown subcommand: ${subcommand}`)
       console.error(HELP_TEXT)
@@ -190,6 +197,22 @@ function main(): void {
 function runStats(): void {
   const stats = readStats(defaultLogPath())
   console.log(formatStats(stats))
+}
+
+function runLint(): void {
+  const sources = collectRuleSources(process.cwd())
+  if (sources.length === 0) {
+    console.log(
+      'No instruction files found (looked for CLAUDE.md, AGENTS.md, .cursorrules, .cursor/rules/*.mdc, .clinerules/*.md, .windsurf/rules/*.md, .github/copilot-instructions.md, CONVENTIONS.md).'
+    )
+    return
+  }
+  const findings = lintRuleSources(sources)
+  console.log(formatFindings(findings))
+  const hasError = findings.some((f) => f.severity === 'error')
+  if (hasError) {
+    process.exitCode = 1
+  }
 }
 
 if (require.main === module) {

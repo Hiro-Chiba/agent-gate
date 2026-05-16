@@ -11,6 +11,9 @@ import { validator } from '../validation/validator'
 import { Config } from '../config/Config'
 import { ClaudeCli } from '../validation/models/ClaudeCli'
 import { AnthropicApi } from '../validation/models/AnthropicApi'
+import { DeterministicRule } from '../deterministic/types'
+import { runDeterministicRules } from '../deterministic/engine'
+import { defaultDeterministicRules } from '../deterministic/defaultRules'
 
 const PASS: ValidationResult = { decision: undefined, reason: '' }
 const HOOK_EVENT_PRE_TOOL_USE = 'PreToolUse'
@@ -54,6 +57,7 @@ export interface ProcessHookDataDeps {
   getModelClient?: (config: Config) => IModelClient
   cooldownStore?: CooldownStore
   cwd?: string
+  deterministicRules?: DeterministicRule[]
 }
 
 export async function processHookData(
@@ -89,6 +93,16 @@ export async function processHookData(
   const toolInput = hookData.tool_input
   if (!toolName || !toolInput) {
     return PASS
+  }
+
+  // Deterministic rules: a fast, cheap safety baseline that runs before
+  // any cooldown or AI check. These rules catch catastrophic patterns
+  // (rm -rf root, writes to secret stores, etc.) and short-circuit
+  // the rest of the pipeline.
+  const rules = deps?.deterministicRules ?? defaultDeterministicRules
+  const ruleVerdict = runDeterministicRules(toolName, toolInput, rules)
+  if (ruleVerdict.kind === 'block') {
+    return { decision: 'block', reason: ruleVerdict.reason }
   }
 
   // Cooldown check (file-based, persists across process invocations)

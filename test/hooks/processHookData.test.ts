@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   processHookData,
   CooldownStore,
@@ -7,6 +7,7 @@ import { Config } from '../../src/config/Config'
 import { ClaudeMdFile } from '../../src/contracts/types/ClaudeMdFile'
 import { ValidationResult } from '../../src/contracts/types/ValidationResult'
 import { IModelClient } from '../../src/contracts/types/ModelClient'
+import { DeterministicRule } from '../../src/deterministic/types'
 
 const sampleClaudeMdFiles: ClaudeMdFile[] = [
   { path: '/project/CLAUDE.md', content: '# Rules\n- No deleting files' },
@@ -95,7 +96,7 @@ describe('processHookData', () => {
     const input = JSON.stringify({
       hook_event_name: 'PreToolUse',
       tool_name: 'Bash',
-      tool_input: { command: 'rm -rf /' },
+      tool_input: { command: 'echo hello' },
     })
 
     const result = await processHookData(input, {
@@ -156,6 +157,111 @@ describe('processHookData', () => {
     // Second call within cooldown should skip
     await processHookData(input, deps)
     expect(callCount).toBe(1)
+  })
+
+  it('returns block from a deterministic rule without calling the AI validator', async () => {
+    const validatorFn = vi.fn()
+    const blockingRule: DeterministicRule = {
+      id: 'test-block',
+      check: () => ({ kind: 'block', reason: 'deterministic guard fired' }),
+    }
+
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'rm -rf /' },
+    })
+
+    const result = await processHookData(input, {
+      config: new Config({ disabled: false }),
+      collectFn: () => sampleClaudeMdFiles,
+      validatorFn: validatorFn as never,
+      getModelClient: () => mockClient(),
+      deterministicRules: [blockingRule],
+    })
+
+    expect(result.decision).toBe('block')
+    expect(result.reason).toBe('deterministic guard fired')
+    expect(validatorFn).not.toHaveBeenCalled()
+  })
+
+  it('falls through to AI validator when no deterministic rule blocks', async () => {
+    const allowRule: DeterministicRule = {
+      id: 'always-allow',
+      check: () => ({ kind: 'allow' }),
+    }
+
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'ls' },
+    })
+
+    const result = await processHookData(input, {
+      config: new Config({ disabled: false }),
+      collectFn: () => sampleClaudeMdFiles,
+      validatorFn: createMockValidator({
+        decision: 'block',
+        reason: 'AI said no',
+      }),
+      getModelClient: () => mockClient(),
+      deterministicRules: [allowRule],
+    })
+
+    expect(result.decision).toBe('block')
+    expect(result.reason).toBe('AI said no')
+  })
+
+  it('runs deterministic rules even when there are no CLAUDE.md files', async () => {
+    const blockingRule: DeterministicRule = {
+      id: 'test-block',
+      check: () => ({ kind: 'block', reason: 'safety baseline' }),
+    }
+
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'rm -rf /' },
+    })
+
+    const result = await processHookData(input, {
+      config: new Config({ disabled: false }),
+      collectFn: () => [],
+      deterministicRules: [blockingRule],
+    })
+
+    expect(result.decision).toBe('block')
+    expect(result.reason).toBe('safety baseline')
+  })
+
+  it('runs deterministic rules even within the cooldown window', async () => {
+    const blockingRule: DeterministicRule = {
+      id: 'test-block',
+      check: () => ({ kind: 'block', reason: 'safety baseline' }),
+    }
+
+    const cooldownStore = new InMemoryCooldownStore()
+    cooldownStore.setLastTime(
+      '/cooldown-still-blocks',
+      Math.floor(Date.now() / 1000)
+    )
+
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'rm -rf /' },
+    })
+
+    const result = await processHookData(input, {
+      config: new Config({ disabled: false, cooldown: 60 }),
+      collectFn: () => sampleClaudeMdFiles,
+      cooldownStore,
+      cwd: '/cooldown-still-blocks',
+      deterministicRules: [blockingRule],
+    })
+
+    expect(result.decision).toBe('block')
+    expect(result.reason).toBe('safety baseline')
   })
 
   it('validates again after cooldown expires', async () => {

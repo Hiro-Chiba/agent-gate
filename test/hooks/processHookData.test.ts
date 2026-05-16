@@ -452,6 +452,71 @@ describe('processHookData', () => {
     expect(observedHistoryLen).toBe(0)
   })
 
+  it('emits rule.fired and verdict.decided events to a custom sink on deterministic block', async () => {
+    const { EventBus } = await import('../../src/observability/eventBus')
+    const { PipelineEvent } = await import('../../src/observability/sinks/Sink')
+    type Evt = Awaited<ReturnType<typeof Promise.resolve<typeof PipelineEvent>>>
+    const received: unknown[] = []
+    const bus = new EventBus()
+    bus.subscribe({ handle: (e) => void received.push(e) })
+
+    const blockingRule: DeterministicRule = {
+      id: 'r-test',
+      check: () => ({ kind: 'block', reason: 'no good' }),
+    }
+
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'echo' },
+    })
+    await processHookData(input, {
+      config: new Config({ disabled: false }),
+      deterministicRules: [blockingRule],
+      eventBus: bus,
+    })
+
+    const types = (received as { type: string }[]).map((e) => e.type)
+    expect(types).toContain('rule.fired')
+    expect(types).toContain('verdict.decided')
+  })
+
+  it('emits ai.requested, ai.completed, and verdict.decided on the AI path', async () => {
+    const { EventBus } = await import('../../src/observability/eventBus')
+    const received: { type: string }[] = []
+    const bus = new EventBus()
+    bus.subscribe({ handle: (e) => void received.push(e as { type: string }) })
+
+    const allowRule: DeterministicRule = {
+      id: 'allow',
+      check: () => ({ kind: 'allow' }),
+    }
+
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'echo hi' },
+    })
+    await processHookData(input, {
+      config: new Config({ disabled: false }),
+      collectFn: () => sampleClaudeMdFiles,
+      validatorFn: createMockValidator({
+        decision: undefined,
+        reason: 'no violation',
+      }),
+      getModelClient: () => mockClient(),
+      deterministicRules: [allowRule],
+      eventBus: bus,
+    })
+
+    const types = received.map((e) => e.type)
+    expect(types).toEqual([
+      'ai.requested',
+      'ai.completed',
+      'verdict.decided',
+    ])
+  })
+
   it('validates again after cooldown expires', async () => {
     let callCount = 0
     const mockValidator = async () => {

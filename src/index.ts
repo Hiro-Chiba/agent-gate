@@ -41,6 +41,19 @@ export { claudeCodeAdapter } from './adapters/claude-code/adapter'
 export { cursorAdapter } from './adapters/cursor/adapter'
 export type { Adapter, ReadHistoryOptions } from './adapters/Adapter'
 
+// Observability
+export { EventBus } from './observability/eventBus'
+export { JsonlFileSink } from './observability/sinks/JsonlFileSink'
+export type {
+  PipelineEvent,
+  RuleFiredEvent,
+  AiRequestedEvent,
+  AiCompletedEvent,
+  VerdictDecidedEvent,
+  PipelineErrorEvent,
+  Sink,
+} from './observability/sinks/Sink'
+
 // Core
 export { collectRuleSources } from './collector/collectRuleSources'
 export { validator } from './validation/validator'

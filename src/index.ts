@@ -82,6 +82,12 @@ export type {
 } from './daemon/protocol'
 
 // Observability
+export { suggestRules, formatSuggestions } from './observability/suggest'
+export type {
+  Suggestion,
+  SuggestionKind,
+  SuggestOptions,
+} from './observability/suggest'
 export { EventBus } from './observability/eventBus'
 export { JsonlFileSink } from './observability/sinks/JsonlFileSink'
 export type {

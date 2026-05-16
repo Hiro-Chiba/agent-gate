@@ -46,6 +46,42 @@ describe('splitStatements', () => {
       'grep secret',
     ])
   })
+
+  it('keeps a heredoc body inside the same statement (no internal split)', () => {
+    const cmd = 'cat <<EOF > /tmp/x\nfoo ; bar\nEOF\necho done'
+    const out = splitStatements(cmd)
+    expect(out).toEqual([
+      'cat <<EOF > /tmp/x\nfoo ; bar\nEOF',
+      'echo done',
+    ])
+  })
+
+  it('respects a quoted heredoc tag', () => {
+    const cmd = "cat <<'EOF' > /tmp/y\necho fake ; rm -rf /\nEOF\nls"
+    const out = splitStatements(cmd)
+    expect(out).toHaveLength(2)
+    expect(out[0]).toContain('echo fake ; rm -rf /')
+    expect(out[1]).toBe('ls')
+  })
+
+  it('respects <<- indented heredoc terminator', () => {
+    const cmd = 'cat <<-EOF > /tmp/z\n\tline\n\tEOF\nls'
+    const out = splitStatements(cmd)
+    expect(out).toHaveLength(2)
+    expect(out[1]).toBe('ls')
+  })
+
+  it('does not let internal quotes inside a heredoc body change quote state', () => {
+    // Regression: the original splitStatements treated the first quote
+    // inside the heredoc body as if it closed the surrounding double
+    // quote, so an "rm -rf /" further down was promoted to its own
+    // statement and tripped preventRmRfRoot on a benign commit message.
+    const cmd =
+      'git commit -m "$(cat <<\'EOF\'\nline with "double" and \'single\' quotes\nrm -rf does not run here\nEOF\n)"'
+    const out = splitStatements(cmd)
+    expect(out).toHaveLength(1)
+    expect(out[0]).toContain('rm -rf does not run here')
+  })
 })
 
 describe('extractHeredocTargets', () => {

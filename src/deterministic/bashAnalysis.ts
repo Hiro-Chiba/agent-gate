@@ -19,9 +19,72 @@ export function splitStatements(command: string): string[] {
   let buf = ''
   let i = 0
   let quote: '"' | "'" | null = null
+  // Active heredoc terminator. When set, we copy bytes verbatim until a
+  // line consisting solely of this tag (with optional leading whitespace
+  // when `stripIndent` is true) is encountered.
+  let heredoc: { tag: string; stripIndent: boolean } | null = null
+
+  function atLineStart(): boolean {
+    return buf.length === 0 || buf[buf.length - 1] === '\n'
+  }
 
   while (i < command.length) {
     const c = command[i]
+
+    // Heredoc body: copy until terminator line. Separators inside the
+    // body are content, not statement boundaries.
+    if (heredoc) {
+      buf += c
+      if (c === '\n') {
+        // Check if the next line is the terminator.
+        let j = i + 1
+        if (heredoc.stripIndent) {
+          while (j < command.length && (command[j] === '\t' || command[j] === ' ')) j++
+        }
+        const slice = command.slice(j, j + heredoc.tag.length)
+        const after = command[j + heredoc.tag.length]
+        if (slice === heredoc.tag && (after === undefined || after === '\n')) {
+          // Consume the terminator line as part of the current statement.
+          if (heredoc.stripIndent) {
+            buf += command.slice(i + 1, j)
+          }
+          buf += heredoc.tag
+          i = j + heredoc.tag.length
+          heredoc = null
+          continue
+        }
+      }
+      i++
+      continue
+    }
+
+    // Detect heredoc opener `<<TAG`, `<<-TAG`, `<<'TAG'`, `<<"TAG"`.
+    if (!quote && c === '<' && command[i + 1] === '<' && command[i + 2] !== '<') {
+      let j = i + 2
+      let stripIndent = false
+      if (command[j] === '-') {
+        stripIndent = true
+        j++
+      }
+      // Skip whitespace between `<<` (or `<<-`) and the tag.
+      while (command[j] === ' ' || command[j] === '\t') j++
+      let tagQuote: '"' | "'" | null = null
+      if (command[j] === '"' || command[j] === "'") {
+        tagQuote = command[j] as '"' | "'"
+        j++
+      }
+      const tagStart = j
+      while (j < command.length && /[A-Za-z0-9_]/.test(command[j])) j++
+      const tag = command.slice(tagStart, j)
+      if (tagQuote && command[j] === tagQuote) j++
+      if (tag.length > 0) {
+        // Copy through the opener so the source remains intact in buf.
+        buf += command.slice(i, j)
+        i = j
+        heredoc = { tag, stripIndent }
+        continue
+      }
+    }
 
     if (quote) {
       buf += c
@@ -37,11 +100,9 @@ export function splitStatements(command: string): string[] {
     }
 
     if (c === ';' || c === '\n' || c === '|') {
-      // `||` collapses with `|`; `&&` handled below.
       out.push(buf)
       buf = ''
       i++
-      // collapse a trailing | of `||`
       if (c === '|' && command[i] === '|') i++
       continue
     }

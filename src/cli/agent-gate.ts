@@ -16,7 +16,9 @@ import {
 } from '../adapters'
 import { Adapter } from '../adapters/Adapter'
 import { readStats, formatStats } from '../observability/stats'
+import { suggestRules, formatSuggestions } from '../observability/suggest'
 import { defaultLogPath } from '../observability/decisionLogger'
+import { defaultDeterministicRules } from '../deterministic/defaultRules'
 import { collectRuleSources } from '../collector/collectRuleSources'
 import { lintRuleSources } from '../doctor/lintRuleSources'
 import { lintRuleSourcesWithAi } from '../doctor/lintRuleSourcesWithAi'
@@ -37,6 +39,7 @@ Usage:
   agent-gate install                Register the hook in ~/.claude/settings.json
   agent-gate uninstall              Remove the hook from ~/.claude/settings.json
   agent-gate stats                  Summarize decisions from the log file
+  agent-gate suggest                Surface rule candidates and stale rules from the decision log
   agent-gate lint [--ai]            Audit CLAUDE.md / AGENTS.md / etc. for AI-friendliness
                                     (--ai adds AI-driven contradiction / ambiguity / missing-imperative checks)
   agent-gate daemon                 Start the long-lived daemon (Unix socket)
@@ -263,6 +266,9 @@ function main(): void {
     case 'stats':
       runStats()
       return
+    case 'suggest':
+      runSuggest()
+      return
     case 'lint':
       void runLint(parsedArgs.ai)
       return
@@ -279,6 +285,24 @@ function main(): void {
 function runStats(): void {
   const stats = readStats(defaultLogPath())
   console.log(formatStats(stats))
+}
+
+function runSuggest(): void {
+  const windowDays = parseInt(
+    process.env.AGENT_GATE_SUGGEST_WINDOW_DAYS ?? '7',
+    10
+  )
+  const minPatternCount = parseInt(
+    process.env.AGENT_GATE_SUGGEST_MIN_COUNT ?? '3',
+    10
+  )
+  const knownRuleIds = defaultDeterministicRules.map((r) => r.id)
+  const suggestions = suggestRules(defaultLogPath(), {
+    windowDays: Number.isNaN(windowDays) ? 7 : windowDays,
+    minPatternCount: Number.isNaN(minPatternCount) ? 3 : minPatternCount,
+    knownRuleIds,
+  })
+  console.log(formatSuggestions(suggestions))
 }
 
 async function runLint(useAi: boolean): Promise<void> {

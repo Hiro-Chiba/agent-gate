@@ -1,13 +1,10 @@
-# claudegate
+# agent-gate
 
-[![CI](https://github.com/Hiro-Chiba/claudegate/actions/workflows/ci.yml/badge.svg)](https://github.com/Hiro-Chiba/claudegate/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/claudegate.svg)](https://www.npmjs.com/package/claudegate)
-[![License: MIT](https://img.shields.io/npm/l/claudegate.svg)](LICENSE)
-[![Node](https://img.shields.io/node/v/claudegate.svg)](package.json)
+[![CI](https://github.com/Hiro-Chiba/agent-gate/actions/workflows/ci.yml/badge.svg)](https://github.com/Hiro-Chiba/agent-gate/actions/workflows/ci.yml)
 
 AI-powered CLAUDE.md enforcer for Claude Code.
 
-English | [日本語](README_ja.md) | [Architecture](docs/architecture.md)
+[Architecture](docs/architecture.md)
 
 ---
 
@@ -29,40 +26,35 @@ Prevents Claude Code from forgetting CLAUDE.md rules during long sessions caused
 ## Installation
 
 ```bash
-npm install -g claudegate
-claudegate install
+git clone https://github.com/Hiro-Chiba/agent-gate.git
+cd agent-gate
+./install.sh
 ```
 
-Restart Claude Code to activate. To remove, run `claudegate uninstall`.
+The install script handles dependency install, build, and hook registration. Restart Claude Code to activate.
+
+To remove the hook, run `./uninstall.sh` from the same directory.
 
 ## Configuration
 
 | Variable | Default | Description |
 |---|---|---|
-| `CLAUDEGATE_MODEL` | `claude-sonnet-4-6` | Model used for validation |
-| `CLAUDEGATE_API_KEY` | — | Anthropic API key (uses API directly when set) |
-| `CLAUDEGATE_COOLDOWN` | `0` | Cooldown in seconds (0 = validate every time) |
-| `CLAUDEGATE_DISABLED` | `false` | Disable flag |
-| `USE_SYSTEM_CLAUDE` | `false` | `true` forces PATH claude (default: ~/.claude/local/claude, falls back to PATH if not found) |
+| `AGENT_GATE_MODEL` | `claude-sonnet-4-6` | Model used for validation |
+| `AGENT_GATE_API_KEY` | — | Anthropic API key (uses API directly when set) |
+| `AGENT_GATE_COOLDOWN` | `0` | Cooldown in seconds (0 = validate every time) |
+| `AGENT_GATE_DISABLED` | `false` | Disable flag |
+| `USE_SYSTEM_CLAUDE` | `false` | `true` forces PATH claude (default: `~/.claude/local/claude`, falls back to PATH if not found) |
 
 ## How It Works
 
 1. Claude Code attempts to run `Edit`/`Write`/`Bash` — PreToolUse hook fires
-2. claudegate collects CLAUDE.md files from the project
+2. agent-gate collects CLAUDE.md files from the project
 3. AI checks the tool operation against the rules
-4. Violation found — operation blocked. No violation — operation proceeds.
+4. Violation found, operation blocked. No violation, operation proceeds.
 
 ## Network Access
 
-claudegate only communicates with Anthropic endpoints — either directly via the Anthropic API (when `CLAUDEGATE_API_KEY` is set) or indirectly through the Claude CLI subprocess. It does not contact any other external services, and it does not send telemetry.
-
-## Contributing
-
-Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding conventions, and the pull request workflow.
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for the release history.
+agent-gate only communicates with Anthropic endpoints, either directly via the Anthropic API (when `AGENT_GATE_API_KEY` is set) or indirectly through the Claude CLI subprocess. It does not contact any other external services, and it does not send telemetry.
 
 ## License
 

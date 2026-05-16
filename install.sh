@@ -2,12 +2,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DIST_ENTRY="${SCRIPT_DIR}/dist/cli/claudegate.js"
+DIST_ENTRY="${SCRIPT_DIR}/dist/cli/agent-gate.js"
 
-echo "=== claudegate installer (git-clone mode) ==="
+echo "=== agent-gate installer (git-clone mode) ==="
 echo ""
-echo "Note: if you installed via 'npm install -g claudegate',"
-echo "you can run 'claudegate install' directly instead of this script."
+echo "Note: if you installed via 'npm install -g agent-gate',"
+echo "you can run 'agent-gate install' directly instead of this script."
 echo ""
 
 cd "$SCRIPT_DIR"

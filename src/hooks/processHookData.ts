@@ -14,7 +14,7 @@ import { AnthropicApi } from '../validation/models/AnthropicApi'
 
 const PASS: ValidationResult = { decision: undefined, reason: '' }
 const HOOK_EVENT_PRE_TOOL_USE = 'PreToolUse'
-const COOLDOWN_DIR_NAME = 'claudegate'
+const COOLDOWN_DIR_NAME = 'agent-gate'
 
 export interface CooldownStore {
   getLastTime(key: string): number

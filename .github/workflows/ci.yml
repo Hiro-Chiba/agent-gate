@@ -17,7 +17,12 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      # `npm ci` is strict about platform-specific optional deps that
+      # appear in the lock file. jiti's @rolldown/* transitive deps
+      # resolve to different @emnapi versions on macOS vs Linux, so we
+      # use `npm install` here to tolerate that drift while still
+      # respecting the lock file for direct deps.
+      - run: npm install --no-audit --no-fund --no-progress
 
       - name: Security audit (runtime deps, high severity)
         run: npm audit --audit-level=high --omit=dev

@@ -20,12 +20,13 @@ import {
   loadAgentGateConfig,
 } from '../config/AgentGateConfig'
 import {
-  appendDecision,
   defaultLogPath,
   isLoggingEnabled,
-  DecisionLogEntry,
   DecisionSource,
 } from '../observability/decisionLogger'
+import { EventBus } from '../observability/eventBus'
+import { JsonlFileSink } from '../observability/sinks/JsonlFileSink'
+import { PipelineEvent } from '../observability/sinks/Sink'
 import {
   SessionContext,
   SessionEvent,
@@ -75,28 +76,25 @@ export interface ProcessHookDataDeps {
   cwd?: string
   deterministicRules?: DeterministicRule[]
   adapter?: Adapter
+  /**
+   * Pre-configured event bus. When omitted, a default bus is built
+   * and a JsonlFileSink is auto-subscribed iff AGENT_GATE_LOG=1 (or
+   * `logging.enabled` is true).
+   */
+  eventBus?: EventBus
   /** Override logging behavior. When provided, replaces env detection. */
   logging?: { enabled: boolean; path?: string }
 }
 
-function maybeLog(
-  deps: ProcessHookDataDeps | undefined,
-  entry: Omit<DecisionLogEntry, 'timestamp'>
-): void {
-  const enabled = deps?.logging
-    ? deps.logging.enabled
-    : isLoggingEnabled()
-  if (!enabled) return
-  const path = deps?.logging?.path ?? defaultLogPath()
-  const full: DecisionLogEntry = {
-    timestamp: new Date().toISOString(),
-    ...entry,
+function resolveEventBus(deps: ProcessHookDataDeps | undefined): EventBus {
+  if (deps?.eventBus) return deps.eventBus
+  const bus = new EventBus()
+  const enabled = deps?.logging ? deps.logging.enabled : isLoggingEnabled()
+  if (enabled) {
+    const path = deps?.logging?.path ?? defaultLogPath()
+    bus.subscribe(new JsonlFileSink(path))
   }
-  try {
-    appendDecision(full, path)
-  } catch {
-    // Logging failures must never block the hook pipeline.
-  }
+  return bus
 }
 
 export async function processHookData(
@@ -110,6 +108,7 @@ export async function processHookData(
   }
 
   const adapter = deps?.adapter ?? claudeCodeAdapter
+  const bus = resolveEventBus(deps)
   const parsed = adapter.parseHook(input)
   if (parsed.kind === 'skip') {
     return PASS
@@ -148,7 +147,16 @@ export async function processHookData(
     sessionContext
   )
   if (ruleVerdict.kind === 'block') {
-    maybeLog(deps, {
+    bus.emit({
+      type: 'rule.fired',
+      adapter: adapter.id,
+      toolName,
+      ruleId: ruleVerdict.ruleId,
+      decision: 'block',
+      reason: ruleVerdict.reason,
+    })
+    bus.emit({
+      type: 'verdict.decided',
       adapter: adapter.id,
       toolName,
       decision: 'block',
@@ -188,18 +196,37 @@ export async function processHookData(
 
   // Validate
   const validate = deps?.validatorFn ?? validator
+  bus.emit({
+    type: 'ai.requested',
+    adapter: adapter.id,
+    toolName,
+    rulesCount: rules.length,
+  })
+  const aiStart = Date.now()
   const result = await validate(rules, toolName, toolInput, modelClient)
+  const aiLatency = Date.now() - aiStart
 
   // Update cooldown timestamp AFTER successful validation
   if (cooldownStore) {
     cooldownStore.setLastTime(cwd, Math.floor(Date.now() / 1000))
   }
 
+  const decision: 'block' | 'allow' =
+    result.decision === 'block' ? 'block' : 'allow'
   const source: DecisionSource = 'ai'
-  maybeLog(deps, {
+  bus.emit({
+    type: 'ai.completed',
     adapter: adapter.id,
     toolName,
-    decision: result.decision === 'block' ? 'block' : 'allow',
+    decision,
+    reason: result.reason,
+    latencyMs: aiLatency,
+  })
+  bus.emit({
+    type: 'verdict.decided',
+    adapter: adapter.id,
+    toolName,
+    decision,
     reason: result.reason,
     source,
   })

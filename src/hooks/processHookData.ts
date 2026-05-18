@@ -146,7 +146,12 @@ export async function processHookData(
   let history: SessionEvent[] = []
   if (typeof adapter.readHistory === 'function') {
     try {
-      history = await adapter.readHistory({ cwd, limit: 20 })
+      history = await adapter.readHistory({
+        cwd,
+        limit: 20,
+        transcriptPath: parsed.action.transcriptPath,
+        metadata: parsed.action.metadata,
+      })
     } catch {
       history = []
     }

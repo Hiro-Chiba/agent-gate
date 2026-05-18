@@ -7,6 +7,15 @@
 export interface Action {
   toolName: string
   toolInput: Record<string, unknown>
+  /** 
+   * Absolute path to the session transcript/log file, if provided by the 
+   * agent's hook payload.
+   */
+  transcriptPath?: string
+  /** 
+   * Extra vendor-specific metadata extracted from the hook payload.
+   */
+  metadata?: Record<string, unknown>
 }
 
 /**

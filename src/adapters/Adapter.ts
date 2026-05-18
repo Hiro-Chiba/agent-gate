@@ -6,6 +6,10 @@ export interface ReadHistoryOptions {
   cwd: string
   /** Max events to return. Adapters should honor this; default is impl-defined. */
   limit?: number
+  /** Path to the transcript file if provided by the adapter's parseHook. */
+  transcriptPath?: string
+  /** Extra metadata if provided by the adapter's parseHook. */
+  metadata?: Record<string, unknown>
 }
 
 /**

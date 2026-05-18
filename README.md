@@ -99,7 +99,15 @@ Full options: see [docs/config.md](docs/config.md) (TODO) or `AgentGatePluginCon
 ## Supported AI tools
 
 - **Claude Code** (mature, default).
+- **Gemini CLI** (fully supported, `--agent gemini-cli`; features high-precision transcript parsing).
 - **Cursor 1.7** (beta, `--agent cursor`; payload mapping is best-effort against public docs).
+
+Other tools (Copilot, Cline, Aider, Codex web, Replit, Devin) lack a hook surface and cannot be enforced at runtime.
+
+## License
+
+[MIT](LICENSE)
+sor 1.7** (beta, `--agent cursor`; payload mapping is best-effort against public docs).
 
 Other tools (Copilot, Cline, Aider, Codex web, Replit, Devin) lack a hook surface and cannot be enforced at runtime.
 

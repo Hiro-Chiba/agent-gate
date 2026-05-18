@@ -10,6 +10,23 @@ describe('preventSystemPathWrite', () => {
     expect(verdict.kind).toBe('block')
   })
 
+  it('blocks Gemini CLI write_file to /etc/hosts', () => {
+    const verdict = preventSystemPathWrite.check('write_file', {
+      file_path: '/etc/hosts',
+      content: '',
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
+  it('blocks Gemini CLI replace to /etc/hosts', () => {
+    const verdict = preventSystemPathWrite.check('replace', {
+      file_path: '/etc/hosts',
+      old_string: 'a',
+      new_string: 'b',
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
   it('blocks Edit to /usr/local/bin/something', () => {
     const verdict = preventSystemPathWrite.check('Edit', {
       file_path: '/usr/local/bin/something',

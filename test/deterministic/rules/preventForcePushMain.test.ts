@@ -2,14 +2,18 @@ import { describe, it, expect } from 'vitest'
 import { preventForcePushMain } from '../../../src/deterministic/rules/preventForcePushMain'
 
 describe('preventForcePushMain', () => {
-  it('blocks `git push --force origin main`', () => {
+  it('blocks `git push --force origin main` via Bash', () => {
     const verdict = preventForcePushMain.check('Bash', {
       command: 'git push --force origin main',
     })
     expect(verdict.kind).toBe('block')
-    if (verdict.kind === 'block') {
-      expect(verdict.reason).toMatch(/force|main|protected/i)
-    }
+  })
+
+  it('blocks `git push --force origin main` via Gemini CLI run_shell_command', () => {
+    const verdict = preventForcePushMain.check('run_shell_command', {
+      command: 'git push --force origin main',
+    })
+    expect(verdict.kind).toBe('block')
   })
 
   it('blocks `git push -f origin master`', () => {

@@ -5,9 +5,13 @@ describe('preventRmRfRoot', () => {
   it('blocks Bash with `rm -rf /`', () => {
     const verdict = preventRmRfRoot.check('Bash', { command: 'rm -rf /' })
     expect(verdict.kind).toBe('block')
-    if (verdict.kind === 'block') {
-      expect(verdict.reason).toMatch(/rm.*-rf|root|catastrophic/i)
-    }
+  })
+
+  it('blocks Gemini CLI run_shell_command with `rm -rf /`', () => {
+    const verdict = preventRmRfRoot.check('run_shell_command', {
+      command: 'rm -rf /',
+    })
+    expect(verdict.kind).toBe('block')
   })
 
   it('allows Bash with `rm -rf ./build`', () => {

@@ -1,6 +1,13 @@
 import { DeterministicRule, RuleVerdict } from '../types'
 
-const TOOLS_THAT_WRITE = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
+const TOOLS_THAT_WRITE = new Set([
+  'Write',
+  'Edit',
+  'MultiEdit',
+  'NotebookEdit',
+  'replace',
+  'write_file',
+])
 
 const TEMPLATE_SUFFIXES = ['.example', '.sample', '.template', '.dist']
 

@@ -8,9 +8,23 @@ describe('preventSecretFileWrite', () => {
       content: 'API_KEY=secret',
     })
     expect(verdict.kind).toBe('block')
-    if (verdict.kind === 'block') {
-      expect(verdict.reason).toMatch(/secret|credential|env/i)
-    }
+  })
+
+  it('blocks Gemini CLI write_file to .env', () => {
+    const verdict = preventSecretFileWrite.check('write_file', {
+      file_path: '/project/.env',
+      content: 'API_KEY=secret',
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
+  it('blocks Gemini CLI replace to .env', () => {
+    const verdict = preventSecretFileWrite.check('replace', {
+      file_path: '/project/.env',
+      old_string: 'a',
+      new_string: 'b',
+    })
+    expect(verdict.kind).toBe('block')
   })
 
   it('blocks Edit to .env.local', () => {

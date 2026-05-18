@@ -2,8 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { preventBashSecretWrite } from '../../../src/deterministic/rules/preventBashSecretWrite'
 
 describe('preventBashSecretWrite', () => {
-  it('blocks `echo X > .env`', () => {
+  it('blocks `echo X > .env` via Bash', () => {
     const verdict = preventBashSecretWrite.check('Bash', {
+      command: 'echo API_KEY=foo > .env',
+    })
+    expect(verdict.kind).toBe('block')
+  })
+
+  it('blocks `echo X > .env` via Gemini CLI run_shell_command', () => {
+    const verdict = preventBashSecretWrite.check('run_shell_command', {
       command: 'echo API_KEY=foo > .env',
     })
     expect(verdict.kind).toBe('block')

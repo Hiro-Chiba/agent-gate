@@ -75,7 +75,9 @@ function evaluateStatement(stmt: string): RuleVerdict {
 export const preventRmRfRoot: DeterministicRule = {
   id: 'prevent-rm-rf-root',
   check(toolName, toolInput): RuleVerdict {
-    if (toolName !== 'Bash') return { kind: 'allow' }
+    if (toolName !== 'Bash' && toolName !== 'run_shell_command') {
+      return { kind: 'allow' }
+    }
     const command = toolInput.command
     if (typeof command !== 'string') return { kind: 'allow' }
 

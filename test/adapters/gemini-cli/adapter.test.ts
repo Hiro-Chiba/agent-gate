@@ -42,7 +42,7 @@ describe('geminiCliAdapter', () => {
         reason: 'forbidden command'
       })
       expect(JSON.parse(response)).toEqual({
-        decision: 'deny',
+        decision: 'block',
         reason: 'forbidden command'
       })
     })

@@ -22,7 +22,6 @@ export const geminiCliAdapter: Adapter = {
   id: 'gemini-cli',
 
   parseHook(stdinJson: string): ParsedHook {
-    // ... parseHook implementation remains the same
     let raw: unknown
     try {
       raw = JSON.parse(stdinJson)
@@ -58,7 +57,7 @@ export const geminiCliAdapter: Adapter = {
 
   formatResponse(result: ValidationResult): string {
     return JSON.stringify({
-      decision: result.decision === 'block' ? 'deny' : 'allow',
+      decision: result.decision === 'block' ? 'block' : 'allow',
       reason: result.reason,
     })
   },

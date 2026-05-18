@@ -113,6 +113,7 @@ describe('processHookData', () => {
     const result = await processHookData(input, {
       config: new Config({ disabled: false }),
       collectFn: () => sampleClaudeMdFiles,
+      agentGateConfig: { found: true },
       validatorFn: createMockValidator({
         decision: 'block',
         reason: 'Dangerous command',
@@ -155,6 +156,7 @@ describe('processHookData', () => {
     const deps = {
       config: new Config({ disabled: false, cooldown: 60 }),
       collectFn: () => sampleClaudeMdFiles,
+      agentGateConfig: { found: true },
       validatorFn: mockValidator,
       getModelClient: () => mockClient(),
       cooldownStore,
@@ -186,6 +188,7 @@ describe('processHookData', () => {
     const result = await processHookData(input, {
       config: new Config({ disabled: false }),
       collectFn: () => sampleClaudeMdFiles,
+      agentGateConfig: { found: true },
       validatorFn: validatorFn as never,
       getModelClient: () => mockClient(),
       deterministicRules: [blockingRule],
@@ -211,6 +214,7 @@ describe('processHookData', () => {
     const result = await processHookData(input, {
       config: new Config({ disabled: false }),
       collectFn: () => sampleClaudeMdFiles,
+      agentGateConfig: { found: true },
       validatorFn: createMockValidator({
         decision: 'block',
         reason: 'AI said no',
@@ -238,6 +242,7 @@ describe('processHookData', () => {
     const result = await processHookData(input, {
       config: new Config({ disabled: false }),
       collectFn: () => [],
+      agentGateConfig: { found: true },
       deterministicRules: [blockingRule],
     })
 
@@ -266,6 +271,7 @@ describe('processHookData', () => {
     const result = await processHookData(input, {
       config: new Config({ disabled: false, cooldown: 60 }),
       collectFn: () => sampleClaudeMdFiles,
+      agentGateConfig: { found: true },
       cooldownStore,
       cwd: '/cooldown-still-blocks',
       deterministicRules: [blockingRule],
@@ -291,6 +297,7 @@ describe('processHookData', () => {
 
     const result = await processHookData(input, {
       config: new Config({ disabled: false }),
+      agentGateConfig: { found: true },
       adapter: cursorAdapter,
       deterministicRules: [blockingRule],
     })
@@ -343,6 +350,7 @@ describe('processHookData', () => {
     const result = await processHookData(input, {
       config: new Config({ disabled: false }),
       agentGateConfig: {
+        found: true,
         disabledRules: [],
         protectedBranches: ['custom-prod'],
       },
@@ -362,6 +370,7 @@ describe('processHookData', () => {
       config: new Config({ disabled: false }),
       collectFn: () => [],
       agentGateConfig: {
+        found: true,
         customRules: [
           {
             id: 'no-drop-table',
@@ -416,6 +425,7 @@ describe('processHookData', () => {
     const result = await processHookData(input, {
       config: new Config({ disabled: false }),
       adapter,
+      agentGateConfig: { found: true },
       deterministicRules: [rule],
     })
 
@@ -446,6 +456,7 @@ describe('processHookData', () => {
     })
     await processHookData(input, {
       config: new Config({ disabled: false }),
+      agentGateConfig: { found: true },
       adapter: adapterNoHistory,
       deterministicRules: [rule],
     })
@@ -472,6 +483,7 @@ describe('processHookData', () => {
     })
     await processHookData(input, {
       config: new Config({ disabled: false }),
+      agentGateConfig: { found: true },
       deterministicRules: [blockingRule],
       eventBus: bus,
     })
@@ -500,6 +512,7 @@ describe('processHookData', () => {
     await processHookData(input, {
       config: new Config({ disabled: false }),
       collectFn: () => sampleClaudeMdFiles,
+      agentGateConfig: { found: true },
       validatorFn: createMockValidator({
         decision: undefined,
         reason: 'no violation',
@@ -515,6 +528,33 @@ describe('processHookData', () => {
       'ai.completed',
       'verdict.decided',
     ])
+  })
+
+  it('skips EVERYTHING (including deterministic rules) when no config file is found (strict opt-in)', async () => {
+    const blockingRule: DeterministicRule = {
+      id: 'safety-baseline',
+      check: () => ({ kind: 'block', reason: 'blocked by baseline' }),
+    }
+    const validatorFn = vi.fn()
+
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'rm -rf /' },
+    })
+
+    // No config file found in the environment.
+    // The hook should PASS (exit 0) immediately without running any rules or AI.
+    const result = await processHookData(input, {
+      config: new Config({ disabled: false }),
+      agentGateConfig: {}, // Empty config WITHOUT the 'found' flag (to be implemented)
+      collectFn: () => [],
+      deterministicRules: [blockingRule],
+      validatorFn: validatorFn as never,
+    })
+
+    expect(result.decision).toBeUndefined()
+    expect(validatorFn).not.toHaveBeenCalled()
   })
 
   it('validates again after cooldown expires', async () => {
@@ -540,6 +580,7 @@ describe('processHookData', () => {
     const deps = {
       config: new Config({ disabled: false, cooldown: 60 }),
       collectFn: () => sampleClaudeMdFiles,
+      agentGateConfig: { found: true },
       validatorFn: mockValidator,
       getModelClient: () => mockClient(),
       cooldownStore,

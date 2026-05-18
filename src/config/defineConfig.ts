@@ -7,6 +7,8 @@ import { DeterministicRule } from '../deterministic/types'
  * existing `.agent-gate.json` (the richer config file wins on conflict).
  */
 export interface AgentGatePluginConfig {
+  /** Internal: whether a config file was found on disk. Used for opt-in. */
+  found?: boolean
   /** Rule ids that should not run. Merged with AGENT_GATE_DISABLED_RULES. */
   disabledRules?: string[]
   /** Override the protected branch list used by prevent-force-push-main. */

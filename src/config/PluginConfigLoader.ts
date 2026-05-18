@@ -79,9 +79,7 @@ function loadJsTsFile(path: string): AgentGatePluginConfig {
 
 export function loadPluginConfig(cwd: string): AgentGatePluginConfig {
   const path = findConfigFile(cwd)
-  if (!path) return {}
-  if (path.endsWith('.json')) {
-    return loadJsonFile(path)
-  }
-  return loadJsTsFile(path)
+  if (!path) return { found: false }
+  const config = path.endsWith('.json') ? loadJsonFile(path) : loadJsTsFile(path)
+  return { ...config, found: true }
 }

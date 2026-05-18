@@ -20,9 +20,10 @@ describe('loadAgentGateConfig', () => {
   it('returns empty disabled_rules when no config file and no env var', () => {
     const cfg = loadAgentGateConfig(TEST_DIR)
     expect(cfg.disabledRules).toEqual([])
+    expect(cfg.found).toBe(false)
   })
 
-  it('reads disabled_rules from .agent-gate.json', () => {
+  it('reads disabled_rules from .agent-gate.json and sets found: true', () => {
     writeFileSync(
       join(TEST_DIR, '.agent-gate.json'),
       JSON.stringify({ disabled_rules: ['prevent-rm-rf-root'] })
@@ -30,6 +31,7 @@ describe('loadAgentGateConfig', () => {
 
     const cfg = loadAgentGateConfig(TEST_DIR)
     expect(cfg.disabledRules).toEqual(['prevent-rm-rf-root'])
+    expect(cfg.found).toBe(true)
   })
 
   it('merges env var AGENT_GATE_DISABLED_RULES with file values', () => {

@@ -141,6 +141,11 @@ export async function processHookData(
 
   const agentGateConfig = deps?.agentGateConfig ?? loadAgentGateConfig(cwd)
 
+  // Strict Opt-in: skip everything if no config file was found.
+  if (agentGateConfig.found !== true) {
+    return PASS
+  }
+
   // Build SessionContext (history from adapter, projectRoot defaults to cwd
   // for v1; future work can detect the actual project root).
   let history: SessionEvent[] = []

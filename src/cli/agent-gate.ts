@@ -95,6 +95,13 @@ function runHookMode(adapter: Adapter): void {
       console.log(adapter.formatResponse(result))
     } catch (error) {
       console.error('agent-gate error:', error)
+      // Fail-open: emit a valid allow response so the agent can continue
+      console.log(
+        adapter.formatResponse({
+          decision: undefined,
+          reason: `Internal agent-gate error: ${error instanceof Error ? error.message : String(error)}`,
+        })
+      )
     } finally {
       process.exit(0)
     }

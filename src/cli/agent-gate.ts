@@ -15,17 +15,6 @@ import {
   DEFAULT_ADAPTER_ID,
 } from '../adapters'
 import { Adapter } from '../adapters/Adapter'
-import { readStats, formatStats } from '../observability/stats'
-import { suggestRules, formatSuggestions } from '../observability/suggest'
-import { defaultLogPath } from '../observability/decisionLogger'
-import { defaultDeterministicRules } from '../deterministic/defaultRules'
-import { collectRuleSources } from '../collector/collectRuleSources'
-import { lintRuleSources } from '../doctor/lintRuleSources'
-import { lintRuleSourcesWithAi } from '../doctor/lintRuleSourcesWithAi'
-import { formatFindings } from '../doctor/formatFindings'
-import { Config } from '../config/Config'
-import { AnthropicApi } from '../validation/models/AnthropicApi'
-import { ClaudeCli } from '../validation/models/ClaudeCli'
 import { DaemonServer } from '../daemon/server'
 import { sendToDaemon } from '../daemon/client'
 import { defaultSocketPath } from '../daemon/protocol'
@@ -38,10 +27,6 @@ Usage:
   agent-gate --agent <id>           Use the named adapter (default: claude-code)
   agent-gate install                Register the hook in ~/.claude/settings.json
   agent-gate uninstall              Remove the hook from ~/.claude/settings.json
-  agent-gate stats                  Summarize decisions from the log file
-  agent-gate suggest                Surface rule candidates and stale rules from the decision log
-  agent-gate lint [--ai]            Audit CLAUDE.md / AGENTS.md / etc. for AI-friendliness
-                                    (--ai adds AI-driven contradiction / ambiguity / missing-imperative checks)
   agent-gate daemon                 Start the long-lived daemon (Unix socket)
   agent-gate --help                 Show this help
   agent-gate --version              Show version
@@ -197,14 +182,12 @@ interface ParsedArgs {
   agentId: string
   showHelp: boolean
   showVersion: boolean
-  ai: boolean
 }
 
 export function parseArgs(args: string[]): ParsedArgs {
   let agentId = DEFAULT_ADAPTER_ID
   let showHelp = false
   let showVersion = false
-  let ai = false
   const positional: string[] = []
 
   for (let i = 0; i < args.length; i++) {
@@ -221,10 +204,6 @@ export function parseArgs(args: string[]): ParsedArgs {
       agentId = a.slice('--agent='.length)
       continue
     }
-    if (a === '--ai') {
-      ai = true
-      continue
-    }
     if (a === '--help' || a === '-h' || a === 'help') {
       showHelp = true
       continue
@@ -236,7 +215,7 @@ export function parseArgs(args: string[]): ParsedArgs {
     positional.push(a)
   }
 
-  return { positional, agentId, showHelp, showVersion, ai }
+  return { positional, agentId, showHelp, showVersion }
 }
 
 function main(): void {
@@ -244,7 +223,7 @@ function main(): void {
   const parsedArgs = parseArgs(args)
 
   // A heuristic to detect if we are running in "hook mode" (no positional subcommands).
-  // Positional subcommands are 'install', 'lint', 'stats', etc.
+  // Positional subcommands are 'install', 'uninstall', 'daemon'.
   const isHookMode = parsedArgs.positional.length === 0
 
   try {
@@ -281,15 +260,6 @@ function main(): void {
       case 'uninstall':
         runUninstall()
         return
-      case 'stats':
-        runStats()
-        return
-      case 'suggest':
-        runSuggest()
-        return
-      case 'lint':
-        void runLint(parsedArgs.ai)
-        return
       case 'daemon':
         void runDaemon()
         return
@@ -324,56 +294,6 @@ function handleHookError(error: unknown, agentId: string): void {
     console.log(JSON.stringify({ decision: 'allow', reason: `Fatal error: ${message}` }))
   }
   process.exit(0)
-}
-
-function runStats(): void {
-  const stats = readStats(defaultLogPath())
-  console.log(formatStats(stats))
-}
-
-function runSuggest(): void {
-  const windowDays = parseInt(
-    process.env.AGENT_GATE_SUGGEST_WINDOW_DAYS ?? '7',
-    10
-  )
-  const minPatternCount = parseInt(
-    process.env.AGENT_GATE_SUGGEST_MIN_COUNT ?? '3',
-    10
-  )
-  const knownRuleIds = defaultDeterministicRules.map((r) => r.id)
-  const suggestions = suggestRules(defaultLogPath(), {
-    windowDays: Number.isNaN(windowDays) ? 7 : windowDays,
-    minPatternCount: Number.isNaN(minPatternCount) ? 3 : minPatternCount,
-    knownRuleIds,
-  })
-  console.log(formatSuggestions(suggestions))
-}
-
-async function runLint(useAi: boolean): Promise<void> {
-  const cwd = process.cwd()
-  const sources = collectRuleSources(cwd)
-  if (sources.length === 0) {
-    console.log(
-      'No instruction files found (looked for CLAUDE.md, AGENTS.md, .cursorrules, .cursor/rules/*.mdc, .clinerules/*.md, .windsurf/rules/*.md, .github/copilot-instructions.md, CONVENTIONS.md).'
-    )
-    return
-  }
-  const findings = lintRuleSources(sources)
-
-  if (useAi) {
-    const config = new Config()
-    const client = config.useApi
-      ? new AnthropicApi(config)
-      : new ClaudeCli(config, cwd)
-    const aiFindings = await lintRuleSourcesWithAi(sources, client)
-    findings.push(...aiFindings)
-  }
-
-  console.log(formatFindings(findings))
-  const hasError = findings.some((f) => f.severity === 'error')
-  if (hasError) {
-    process.exitCode = 1
-  }
 }
 
 if (require.main === module) {

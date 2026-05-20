@@ -50,16 +50,6 @@ export type {
   AgentSdkQueryFn,
 } from './validation/models/AgentSdkClient'
 
-// Doctor (CLAUDE.md linter)
-export { lintRuleSources } from './doctor/lintRuleSources'
-export { lintRuleSourcesWithAi } from './doctor/lintRuleSourcesWithAi'
-export { formatFindings } from './doctor/formatFindings'
-export type {
-  Finding,
-  FindingCode,
-  Severity,
-} from './doctor/findings'
-
 // Cache
 export { DecisionCache } from './cache/DecisionCache'
 export type {
@@ -82,12 +72,6 @@ export type {
 } from './daemon/protocol'
 
 // Observability
-export { suggestRules, formatSuggestions } from './observability/suggest'
-export type {
-  Suggestion,
-  SuggestionKind,
-  SuggestOptions,
-} from './observability/suggest'
 export { EventBus } from './observability/eventBus'
 export { JsonlFileSink } from './observability/sinks/JsonlFileSink'
 export type {

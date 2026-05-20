@@ -102,4 +102,22 @@ describe('loadAgentGateConfig', () => {
     const cfg = loadAgentGateConfig(TEST_DIR)
     expect(cfg.extraSecretPathPrefixes).toEqual(['vault/', 'secrets/'])
   })
+
+  it('walks upward to find .agent-gate.json in a parent directory', () => {
+    const parentPath = join(TEST_DIR, '.agent-gate.json')
+    const subDir = join(TEST_DIR, 'subproject')
+
+    // Only the parent dir's legacy JSON exists; the subDir has nothing.
+    vi.mocked(fs.existsSync).mockImplementation((p) => p === parentPath)
+    vi.mocked(fs.readFileSync).mockImplementation((p) => {
+      if (p === parentPath) {
+        return JSON.stringify({ disabled_rules: ['prevent-rm-rf-root'] })
+      }
+      throw new Error(`unexpected read: ${String(p)}`)
+    })
+
+    const cfg = loadAgentGateConfig(subDir)
+    expect(cfg.disabledRules).toContain('prevent-rm-rf-root')
+    expect(cfg.found).toBe(true)
+  })
 })

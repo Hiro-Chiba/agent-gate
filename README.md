@@ -12,7 +12,6 @@
 - **Stops catastrophic operations** before AI ever sees them: `rm -rf /`, writes to `.env` / `.ssh/*`, force-push to `main`, edits to `/etc`. (Supports `Bash`, `Write`, `Edit` in Claude Code; `run_shell_command`, `write_file`, `replace` in Gemini CLI).
 - **Aggregates 8 instruction file formats** into one rule set the AI uses to decide on the remaining cases.
 - **Returns guidance, not denials**: block reasons describe the next correct step the agent should take.
-- **Audits your rule files** with `agent-gate lint` (detects vague rules and ambiguous modifiers like "適切に" / "where possible").
 
 ## Install
 
@@ -85,9 +84,6 @@ Full options: see [docs/config.md](docs/config.md) (TODO) or `AgentGatePluginCon
 |---|---|
 | `agent-gate` | Run as hook (reads stdin, used internally) |
 | `agent-gate install` / `uninstall` | Register or remove the Claude Code hook |
-| `agent-gate lint [--ai]` | Audit instruction files for ambiguity, emptiness, missing rules. `--ai` adds AI-driven contradiction / ambiguity / missing-imperative checks |
-| `agent-gate stats` | Summarize the decision log (after `AGENT_GATE_LOG=1`) |
-| `agent-gate suggest` | Surface rule candidates from repeated AI blocks and stale built-in rules |
 | `agent-gate daemon` | Long-lived server on a Unix socket (opt-in speedup, set `AGENT_GATE_DAEMON=1`) |
 
 ## Environment

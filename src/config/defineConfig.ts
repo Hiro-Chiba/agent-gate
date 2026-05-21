@@ -9,6 +9,20 @@ import { DeterministicRule } from '../deterministic/types'
 export interface AgentGatePluginConfig {
   /** Internal: whether a config file was found on disk. Used for opt-in. */
   found?: boolean
+  /**
+   * Internal: absolute path of the config file that was loaded. Populated
+   * by `loadPluginConfig` when a file is found. Not set by user-authored
+   * `defineConfig(...)` calls.
+   */
+  configPath?: string
+  /**
+   * Internal: error captured while loading the config file (eg. a syntax
+   * error in `.agent-gate.config.ts`). The pipeline continues with an
+   * empty config, but `doctor`-style tooling can surface this so the
+   * user is not left wondering why their rules stopped firing. Not set
+   * by user-authored `defineConfig(...)` calls.
+   */
+  error?: Error
   /** Rule ids that should not run. Merged with AGENT_GATE_DISABLED_RULES. */
   disabledRules?: string[]
   /** Override the protected branch list used by prevent-force-push-main. */

@@ -87,4 +87,11 @@ export type {
 // Core
 export { collectRuleSources } from './collector/collectRuleSources'
 export { validator } from './validation/validator'
-export { processHookData } from './hooks/processHookData'
+export {
+  processHookData,
+  DefaultNoConfigWarner,
+} from './hooks/processHookData'
+export type {
+  NoConfigWarner,
+  DefaultNoConfigWarnerOptions,
+} from './hooks/processHookData'

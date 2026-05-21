@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, writeSync, mkdirSync } from 'fs'
 import { createHash } from 'crypto'
 import { join } from 'path'
 import { tmpdir } from 'os'
@@ -37,6 +37,7 @@ import {
 
 const PASS: ValidationResult = { decision: undefined, reason: '' }
 const COOLDOWN_DIR_NAME = 'agent-gate'
+const WARNINGS_DIR_NAME = 'agent-gate-warnings'
 
 export interface CooldownStore {
   getLastTime(key: string): number
@@ -69,6 +70,121 @@ class FileCooldownStore implements CooldownStore {
   }
 }
 
+export interface NoConfigWarner {
+  warn(cwd: string): void
+}
+
+export interface WarningStamp {
+  getLastTime(key: string): number
+  setLastTime(key: string, time: number): void
+}
+
+class FileWarningStamp implements WarningStamp {
+  private readonly dir: string
+
+  constructor() {
+    this.dir = join(tmpdir(), WARNINGS_DIR_NAME)
+  }
+
+  private stampPath(key: string): string {
+    const hash = createHash('sha256').update(key).digest('hex')
+    return join(this.dir, hash)
+  }
+
+  getLastTime(key: string): number {
+    try {
+      return parseInt(readFileSync(this.stampPath(key), 'utf-8'), 10) || 0
+    } catch {
+      return 0
+    }
+  }
+
+  setLastTime(key: string, time: number): void {
+    try {
+      mkdirSync(this.dir, { recursive: true })
+      writeFileSync(this.stampPath(key), String(time))
+    } catch {
+      // best-effort: never let the warner break the hook
+    }
+  }
+}
+
+export interface DefaultNoConfigWarnerOptions {
+  throttleMs?: number
+  now?: () => number
+  writeStderr?: (msg: string) => void
+  stamp?: WarningStamp
+  isSilenced?: () => boolean
+}
+
+export class DefaultNoConfigWarner implements NoConfigWarner {
+  private readonly throttleMs: number
+  private readonly now: () => number
+  private readonly writeStderr: (msg: string) => void
+  private readonly stamp: WarningStamp
+  private readonly isSilenced: () => boolean
+
+  constructor(opts: DefaultNoConfigWarnerOptions = {}) {
+    this.throttleMs = opts.throttleMs ?? defaultThrottleMsFromEnv()
+    this.now = opts.now ?? Date.now
+    this.writeStderr = opts.writeStderr ?? defaultWriteStderr
+    this.stamp = opts.stamp ?? new FileWarningStamp()
+    this.isSilenced = opts.isSilenced ?? defaultIsSilenced
+  }
+
+  warn(cwd: string): void {
+    if (this.isSilenced()) return
+    try {
+      const now = this.now()
+      const last = this.stamp.getLastTime(cwd)
+      // last === 0 means "never warned" — always emit.
+      // `now < last` guards against backward clock jumps (NTP, dual-boot)
+      // that would otherwise suppress the warning indefinitely.
+      if (last > 0 && now >= last && now - last < this.throttleMs) return
+      this.stamp.setLastTime(cwd, now)
+      this.writeStderr(buildNoConfigWarningMessage(cwd))
+    } catch {
+      // never let the warner break the hook pipeline
+    }
+  }
+}
+
+function defaultThrottleMsFromEnv(): number {
+  const raw = process.env.AGENT_GATE_NO_CONFIG_WARNING_TTL_SEC
+  if (raw === undefined || raw === '') return 60 * 60 * 1000
+  const parsed = parseInt(raw, 10)
+  if (Number.isNaN(parsed) || parsed < 0) return 60 * 60 * 1000
+  return parsed * 1000
+}
+
+// Use synchronous fd-level write so the message reliably reaches the
+// terminal before `process.exit()` runs. `process.stderr.write()` is
+// async on non-TTY pipes (the normal Claude Code hook environment) and
+// its buffer can be dropped on immediate exit.
+function defaultWriteStderr(msg: string): void {
+  try {
+    writeSync(2, msg)
+  } catch {
+    // best-effort: ignore EAGAIN / EBADF / etc.
+  }
+}
+
+function defaultIsSilenced(): boolean {
+  const v = process.env.AGENT_GATE_NO_CONFIG_WARNING
+  return v === '1' || v === 'true'
+}
+
+function buildNoConfigWarningMessage(cwd: string): string {
+  return (
+    `agent-gate: no .agent-gate.config.* found in ${cwd} or its ancestors.\n` +
+    `  The hook is installed but inactive. Add .agent-gate.config.ts at your project root.\n` +
+    `  Docs: https://github.com/Hiro-Chiba/agent-gate#config\n` +
+    `  Silence: set AGENT_GATE_NO_CONFIG_WARNING=1\n`
+  )
+}
+
+const NOOP_NO_CONFIG_WARNER: NoConfigWarner = { warn: () => {} }
+
 export interface ProcessHookDataDeps {
   config?: Config
   agentGateConfig?: AgentGateConfig
@@ -93,6 +209,14 @@ export interface ProcessHookDataDeps {
    * entire pipeline on a hit.
    */
   cache?: DecisionCache
+  /**
+   * Emits a "no .agent-gate.config.* found" warning when strict opt-in
+   * triggers a silent skip. Defaults to a no-op so library callers and
+   * tests are not surprised by stderr writes. The CLI entry
+   * (`runHookMode` / `runDaemon`) injects a `DefaultNoConfigWarner` so
+   * end users see the warning in their terminal.
+   */
+  noConfigWarner?: NoConfigWarner
 }
 
 function resolveEventBus(deps: ProcessHookDataDeps | undefined): EventBus {
@@ -143,6 +267,8 @@ export async function processHookData(
 
   // Strict Opt-in: skip everything if no config file was found.
   if (agentGateConfig.found !== true) {
+    const warner = deps?.noConfigWarner ?? NOOP_NO_CONFIG_WARNER
+    warner.warn(cwd)
     return PASS
   }
 

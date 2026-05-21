@@ -58,6 +58,8 @@ Run by default, disable per-rule in `.agent-gate.json` if needed.
 
 ## Config
 
+agent-gate is strictly opt-in: without an `.agent-gate.config.*` file in the project tree, the hook is registered but skips every check. A warning is printed to stderr explaining how to enable it (throttled to once per hour per project root); set `AGENT_GATE_NO_CONFIG_WARNING=1` to silence, or `AGENT_GATE_NO_CONFIG_WARNING_TTL_SEC=<seconds>` to change the throttle window.
+
 Drop a `.agent-gate.config.ts` (or `.js` / `.json`) at the project root:
 
 ```ts
@@ -100,6 +102,8 @@ Full options: see [docs/config.md](docs/config.md) (TODO) or `AgentGatePluginCon
 | `AGENT_GATE_DAEMON` | `1` routes through the daemon if it is running |
 | `AGENT_GATE_CACHE_TTL_SEC` | Daemon decision cache TTL in seconds (default `60`) |
 | `AGENT_GATE_CACHE_SIZE` | Daemon decision cache max entries (default `256`) |
+| `AGENT_GATE_NO_CONFIG_WARNING` | `1` silences the stderr warning emitted when no `.agent-gate.config.*` is found |
+| `AGENT_GATE_NO_CONFIG_WARNING_TTL_SEC` | Throttle window for the above warning, in seconds (default `3600`) |
 
 ## Supported AI tools
 

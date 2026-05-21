@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   processHookData,
   CooldownStore,
+  NoConfigWarner,
 } from '../../src/hooks/processHookData'
 import { Config } from '../../src/config/Config'
 import { RuleSource } from '../../src/contracts/types/RuleSource'
@@ -555,6 +556,69 @@ describe('processHookData', () => {
 
     expect(result.decision).toBeUndefined()
     expect(validatorFn).not.toHaveBeenCalled()
+  })
+
+  it('invokes the no-config warner when no config file is found', async () => {
+    const warnedCwds: string[] = []
+    const warner: NoConfigWarner = {
+      warn: (cwd) => warnedCwds.push(cwd),
+    }
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Edit',
+      tool_input: { file_path: '/test.ts' },
+    })
+
+    const result = await processHookData(input, {
+      config: new Config({ disabled: false }),
+      agentGateConfig: { found: false },
+      noConfigWarner: warner,
+      cwd: '/my-project',
+    })
+
+    expect(result.decision).toBeUndefined()
+    expect(warnedCwds).toEqual(['/my-project'])
+  })
+
+  it('does not invoke the no-config warner when a config file is found', async () => {
+    const warnedCwds: string[] = []
+    const warner: NoConfigWarner = {
+      warn: (cwd) => warnedCwds.push(cwd),
+    }
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Edit',
+      tool_input: { file_path: '/test.ts' },
+    })
+
+    await processHookData(input, {
+      config: new Config({ disabled: false }),
+      agentGateConfig: { found: true },
+      collectFn: () => [],
+      noConfigWarner: warner,
+    })
+
+    expect(warnedCwds).toEqual([])
+  })
+
+  it('does not invoke the no-config warner when the whole tool is disabled', async () => {
+    const warnedCwds: string[] = []
+    const warner: NoConfigWarner = {
+      warn: (cwd) => warnedCwds.push(cwd),
+    }
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Edit',
+      tool_input: { file_path: '/test.ts' },
+    })
+
+    await processHookData(input, {
+      config: new Config({ disabled: true }),
+      agentGateConfig: { found: false },
+      noConfigWarner: warner,
+    })
+
+    expect(warnedCwds).toEqual([])
   })
 
   it('validates again after cooldown expires', async () => {

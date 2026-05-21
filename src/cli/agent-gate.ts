@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 import { realpathSync } from 'fs'
-import { processHookData } from '../hooks/processHookData'
+import {
+  processHookData,
+  DefaultNoConfigWarner,
+} from '../hooks/processHookData'
 import { ValidationResult } from '../contracts/types/ValidationResult'
 import {
   installHook,
@@ -43,6 +46,8 @@ Environment:
   AGENT_GATE_LOG                Set to "1" to write decisions to ~/.agent-gate/log.jsonl
   AGENT_GATE_DAEMON             Set to "1" to route hook calls through the daemon
   AGENT_GATE_SOCKET_PATH        Daemon socket path (default: $TMPDIR/agent-gate.sock)
+  AGENT_GATE_NO_CONFIG_WARNING  Set to "1" to silence the stderr warning when no .agent-gate.config.* is found
+  AGENT_GATE_NO_CONFIG_WARNING_TTL_SEC  Throttle window for the above warning in seconds (default 3600)
   USE_SYSTEM_CLAUDE             Set to "true" to force PATH claude binary
 `
 
@@ -50,7 +55,10 @@ export async function run(
   input: string,
   adapter?: Adapter
 ): Promise<ValidationResult> {
-  return processHookData(input, adapter ? { adapter } : undefined)
+  return processHookData(input, {
+    ...(adapter ? { adapter } : {}),
+    noConfigWarner: new DefaultNoConfigWarner(),
+  })
 }
 
 function runHookMode(adapter: Adapter): void {
@@ -111,6 +119,7 @@ async function runDaemon(): Promise<void> {
     ttlSec: Number.isNaN(ttlSec) ? 60 : ttlSec,
     maxEntries: Number.isNaN(maxEntries) ? 256 : maxEntries,
   })
+  const noConfigWarner = new DefaultNoConfigWarner()
 
   const server = new DaemonServer({
     socketPath,
@@ -127,6 +136,7 @@ async function runDaemon(): Promise<void> {
         adapter,
         cwd: req.cwd,
         cache,
+        noConfigWarner,
       })
       return { output: adapter.formatResponse(result) }
     },

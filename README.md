@@ -56,6 +56,8 @@ Run by default, disable per-rule in `.agent-gate.json` if needed.
 | `prevent-force-push-main` | `git push --force` to `main`, `master`, `develop`, `release`, etc. Allows `--force-with-lease`. |
 | `prevent-system-path-write` | `Edit`/`Write`/`write_file`/`replace` to `/etc`, `/usr`, `/System`, `/Library`. |
 
+**Note on `prevent-secret-file-read`:** the default Claude Code hook matcher registered by `agent-gate install` is `Edit|Write|Bash`, so `Read` calls bypass agent-gate entirely and this rule never fires under Claude Code's default install. To enforce it under Claude Code, edit `~/.claude/settings.json` and add `Read` to the matcher on the agent-gate `PreToolUse` entry. Gemini CLI and Cursor route their read tools through agent-gate automatically, so the rule is active there out of the box.
+
 ## Config
 
 agent-gate is strictly opt-in: without an `.agent-gate.config.*` file in the project tree, the hook is registered but skips every check. A warning is printed to stderr explaining how to enable it (throttled to once per hour per project root); set `AGENT_GATE_NO_CONFIG_WARNING=1` to silence, or `AGENT_GATE_NO_CONFIG_WARNING_TTL_SEC=<seconds>` to change the throttle window.

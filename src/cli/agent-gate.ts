@@ -38,17 +38,22 @@ Adapters (use with --agent):
   ${availableAdapterIds().join(', ')}
 
 Environment:
-  AGENT_GATE_MODEL              Validation model (default: claude-sonnet-4-6)
-  AGENT_GATE_API_KEY            Use Anthropic API directly when set
-  AGENT_GATE_COOLDOWN           Cooldown in seconds between AI validations
-  AGENT_GATE_DISABLED           Set to "true" to disable the whole tool
-  AGENT_GATE_DISABLED_RULES     Comma-separated rule ids to disable
-  AGENT_GATE_LOG                Set to "1" to write decisions to ~/.agent-gate/log.jsonl
-  AGENT_GATE_DAEMON             Set to "1" to route hook calls through the daemon
-  AGENT_GATE_SOCKET_PATH        Daemon socket path (default: $TMPDIR/agent-gate.sock)
-  AGENT_GATE_NO_CONFIG_WARNING  Set to "1" to silence the stderr warning when no .agent-gate.config.* is found
-  AGENT_GATE_NO_CONFIG_WARNING_TTL_SEC  Throttle window for the above warning in seconds (default 3600)
-  USE_SYSTEM_CLAUDE             Set to "true" to force PATH claude binary
+  AGENT_GATE_DISABLED                    Set to "true" to skip all checks
+  AGENT_GATE_DISABLED_RULES              Comma-separated rule ids to skip
+  AGENT_GATE_NO_CONFIG_WARNING           Set to "1" to silence the stderr warning when no .agent-gate.config.* is found
+  AGENT_GATE_NO_CONFIG_WARNING_TTL_SEC   Throttle window for the above warning in seconds (default 3600)
+  AGENT_GATE_MODEL                       Validation model (default: claude-sonnet-4-6)
+  AGENT_GATE_API_KEY                     Use Anthropic API directly instead of the claude CLI
+  AGENT_GATE_USE_SDK                     Set to "1" to prefer the Anthropic agent SDK over API/CLI
+  USE_SYSTEM_CLAUDE                      Set to "true" to force the PATH claude binary
+  AGENT_GATE_REASON_LANG                 AI reason language: auto (default) / en / ja / etc.
+  AGENT_GATE_ON_ERROR                    Set to "block" to fail-closed on rule or model errors (default "allow")
+  AGENT_GATE_COOLDOWN                    Cooldown in seconds between AI validations (default 0)
+  AGENT_GATE_LOG                         Set to "1" to write decisions to ~/.agent-gate/log.jsonl
+  AGENT_GATE_DAEMON                      Set to "1" to route hook calls through the daemon
+  AGENT_GATE_SOCKET_PATH                 Daemon socket path (default: $TMPDIR/agent-gate.sock)
+  AGENT_GATE_CACHE_TTL_SEC               Daemon decision cache TTL in seconds (default 60)
+  AGENT_GATE_CACHE_SIZE                  Daemon decision cache max entries (default 256)
 `
 
 export async function run(

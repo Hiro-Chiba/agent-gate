@@ -19,10 +19,6 @@ import {
   claudeCodeAdapter,
 } from '../adapters'
 import { Adapter } from '../adapters/Adapter'
-import { DaemonServer } from '../daemon/server'
-import { sendToDaemon } from '../daemon/client'
-import { defaultSocketPath } from '../daemon/protocol'
-import { DecisionCache } from '../cache/DecisionCache'
 
 const HELP_TEXT = `agent-gate — runtime enforcer for AI coding agent rules
 
@@ -31,7 +27,6 @@ Usage:
   agent-gate --agent <id>           Force a specific adapter (override auto-detect)
   agent-gate install                Register the hook in ~/.claude/settings.json
   agent-gate uninstall              Remove the hook from ~/.claude/settings.json
-  agent-gate daemon                 Start the long-lived daemon (Unix socket)
   agent-gate --help                 Show this help
   agent-gate --version              Show version
 
@@ -51,10 +46,6 @@ Environment:
   AGENT_GATE_ON_ERROR                    Set to "block" to fail-closed on rule or model errors (default "allow")
   AGENT_GATE_COOLDOWN                    Cooldown in seconds between AI validations (default 0)
   AGENT_GATE_LOG                         Set to "1" to write decisions to ~/.agent-gate/log.jsonl
-  AGENT_GATE_DAEMON                      Set to "1" to route hook calls through the daemon
-  AGENT_GATE_SOCKET_PATH                 Daemon socket path (default: $TMPDIR/agent-gate.sock)
-  AGENT_GATE_CACHE_TTL_SEC               Daemon decision cache TTL in seconds (default 60)
-  AGENT_GATE_CACHE_SIZE                  Daemon decision cache max entries (default 256)
 `
 
 export async function run(
@@ -88,19 +79,6 @@ function runHookMode(explicitAdapter?: Adapter): void {
   process.stdin.on('end', async () => {
     const adapter = explicitAdapter ?? detectAdapterFromJson(inputData)
     try {
-      if (process.env.AGENT_GATE_DAEMON === '1') {
-        const socketPath =
-          process.env.AGENT_GATE_SOCKET_PATH ?? defaultSocketPath()
-        const resp = await sendToDaemon(
-          { adapter: adapter.id, payload: inputData, cwd: process.cwd() },
-          { socketPath, timeoutMs: 2000 }
-        )
-        if (resp !== null) {
-          console.log(resp.output)
-          process.exit(0)
-        }
-        // Daemon unreachable: fall through to direct mode.
-      }
       const result = await run(inputData, adapter)
       console.log(adapter.formatResponse(result))
     } catch (error) {
@@ -116,56 +94,6 @@ function runHookMode(explicitAdapter?: Adapter): void {
       process.exit(0)
     }
   })
-}
-
-async function runDaemon(): Promise<void> {
-  const socketPath =
-    process.env.AGENT_GATE_SOCKET_PATH ?? defaultSocketPath()
-
-  // Shared decision cache lives for the lifetime of the daemon, so every
-  // hook invocation benefits from prior verdicts.
-  const ttlSec = parseInt(
-    process.env.AGENT_GATE_CACHE_TTL_SEC ?? '60',
-    10
-  )
-  const maxEntries = parseInt(
-    process.env.AGENT_GATE_CACHE_SIZE ?? '256',
-    10
-  )
-  const cache = new DecisionCache({
-    ttlSec: Number.isNaN(ttlSec) ? 60 : ttlSec,
-    maxEntries: Number.isNaN(maxEntries) ? 256 : maxEntries,
-  })
-  const noConfigWarner = new DefaultNoConfigWarner()
-
-  const server = new DaemonServer({
-    socketPath,
-    handler: async (req) => {
-      const adapter = getAdapter(req.adapter)
-      if (!adapter) {
-        return {
-          output: JSON.stringify({
-            error: `unknown adapter: ${req.adapter}`,
-          }),
-        }
-      }
-      const result = await processHookData(req.payload, {
-        adapter,
-        cwd: req.cwd,
-        cache,
-        noConfigWarner,
-      })
-      return { output: adapter.formatResponse(result) }
-    },
-  })
-  await server.start()
-  console.log(`agent-gate daemon listening on ${socketPath}`)
-  const shutdown = async (): Promise<void> => {
-    await server.stop()
-    process.exit(0)
-  }
-  process.on('SIGINT', () => void shutdown())
-  process.on('SIGTERM', () => void shutdown())
 }
 
 function runInstall(): void {
@@ -251,7 +179,7 @@ function main(): void {
   const parsedArgs = parseArgs(args)
 
   // A heuristic to detect if we are running in "hook mode" (no positional subcommands).
-  // Positional subcommands are 'install', 'uninstall', 'daemon'.
+  // Positional subcommands are 'install' and 'uninstall'.
   const isHookMode = parsedArgs.positional.length === 0
 
   try {
@@ -297,9 +225,6 @@ function main(): void {
         return
       case 'uninstall':
         runUninstall()
-        return
-      case 'daemon':
-        void runDaemon()
         return
       default:
         console.error(`Unknown subcommand: ${subcommand}`)

@@ -17,7 +17,7 @@ export type ConfigOptions = {
    * Prefer Anthropic's agent SDK (`@anthropic-ai/claude-agent-sdk`) as the
    * first model client. Reuses the host process's Claude auth, removing
    * the need for AGENT_GATE_API_KEY. The SDK has noticeable cold-start
-   * cost, so this is most useful when paired with `agent-gate daemon`.
+   * cost on each hook invocation.
    */
   useSdk?: boolean
   /**

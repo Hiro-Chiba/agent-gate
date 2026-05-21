@@ -27,7 +27,6 @@ import {
   isLoggingEnabled,
   DecisionSource,
 } from '../observability/decisionLogger'
-import { DecisionCache } from '../cache/DecisionCache'
 import { EventBus } from '../observability/eventBus'
 import { JsonlFileSink } from '../observability/sinks/JsonlFileSink'
 import { PipelineEvent } from '../observability/sinks/Sink'
@@ -205,17 +204,11 @@ export interface ProcessHookDataDeps {
   /** Override logging behavior. When provided, replaces env detection. */
   logging?: { enabled: boolean; path?: string }
   /**
-   * Optional in-process decision cache. Most useful in daemon mode where
-   * the cache survives across hook invocations and short-circuits the
-   * entire pipeline on a hit.
-   */
-  cache?: DecisionCache
-  /**
    * Emits a "no .agent-gate.config.* found" warning when strict opt-in
    * triggers a silent skip. Defaults to a no-op so library callers and
    * tests are not surprised by stderr writes. The CLI entry
-   * (`runHookMode` / `runDaemon`) injects a `DefaultNoConfigWarner` so
-   * end users see the warning in their terminal.
+   * (`runHookMode`) injects a `DefaultNoConfigWarner` so end users see
+   * the warning in their terminal.
    */
   noConfigWarner?: NoConfigWarner
 }
@@ -253,22 +246,10 @@ export async function processHookData(
   const cwd = deps?.cwd ?? process.cwd()
 
   // Stable project identifier used as the key for project-scoped state
-  // (cache, cooldown, no-config warning throttle, sessionContext). Falls
-  // back to cwd when no marker is found so synthetic paths in tests and
+  // (cooldown, no-config warning throttle, sessionContext). Falls back
+  // to cwd when no marker is found so synthetic paths in tests and
   // ad-hoc directories still work.
   const projectRoot = findProjectRoot(cwd) ?? cwd
-
-  // Cache lookup: if a recent verdict for the exact same (adapter, tool,
-  // input, projectRoot) is still valid, return it without re-running.
-  if (deps?.cache) {
-    const cached = deps.cache.get({
-      adapter: adapter.id,
-      toolName,
-      toolInput,
-      projectRoot,
-    })
-    if (cached) return cached
-  }
 
   const agentGateConfig = deps?.agentGateConfig ?? loadAgentGateConfig(cwd)
 
@@ -335,12 +316,6 @@ export async function processHookData(
       decision: 'block',
       reason: ruleVerdict.reason,
     }
-    if (deps?.cache) {
-      deps.cache.set(
-        { adapter: adapter.id, toolName, toolInput, projectRoot },
-        verdict
-      )
-    }
     return verdict
   }
 
@@ -363,12 +338,6 @@ export async function processHookData(
   const rules = collect(cwd)
 
   if (rules.length === 0) {
-    if (deps?.cache) {
-      deps.cache.set(
-        { adapter: adapter.id, toolName, toolInput, projectRoot },
-        PASS
-      )
-    }
     return PASS
   }
 
@@ -415,12 +384,6 @@ export async function processHookData(
     reason: result.reason,
     source,
   })
-  if (deps?.cache) {
-    deps.cache.set(
-      { adapter: adapter.id, toolName, toolInput, projectRoot },
-      result
-    )
-  }
 
   return result
 }

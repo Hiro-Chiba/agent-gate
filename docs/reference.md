@@ -18,7 +18,6 @@ For Gemini CLI or Cursor 1.7 (beta), point your hook config at the bare `agent-g
 | Command | What it does |
 |---|---|
 | `agent-gate install` / `uninstall` | Register or remove the Claude Code hook |
-| `agent-gate daemon` | Long-lived Unix-socket server; pair with `AGENT_GATE_DAEMON=1` |
 | `agent-gate` | Run as a hook (reads stdin; vendor auto-detected) |
 | `agent-gate --agent <id>` | Force the named adapter instead of auto-detecting |
 
@@ -38,10 +37,6 @@ For Gemini CLI or Cursor 1.7 (beta), point your hook config at the bare `agent-g
 | `AGENT_GATE_ON_ERROR` | `block` for fail-closed (default `allow`) |
 | `AGENT_GATE_COOLDOWN` | Cooldown seconds between AI validations (default `0`) |
 | `AGENT_GATE_LOG` | `1` writes decisions to `~/.agent-gate/log.jsonl` |
-| `AGENT_GATE_DAEMON` | `1` routes through the daemon |
-| `AGENT_GATE_SOCKET_PATH` | Daemon socket path (default `$TMPDIR/agent-gate.sock`) |
-| `AGENT_GATE_CACHE_TTL_SEC` | Daemon cache TTL seconds (default `60`) |
-| `AGENT_GATE_CACHE_SIZE` | Daemon cache max entries (default `256`) |
 
 ## Supported AI tools
 

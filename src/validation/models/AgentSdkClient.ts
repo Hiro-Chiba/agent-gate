@@ -31,9 +31,8 @@ export interface AgentSdkClientOptions {
  * (`@anthropic-ai/claude-agent-sdk`). Reuses the host process's
  * existing Claude authentication so no separate API key is required.
  *
- * Tradeoff: the SDK has noticeable cold-start cost on each call.
- * Recommended paired with `agent-gate daemon` so the SDK initialization
- * is amortized across hook invocations.
+ * Tradeoff: the SDK has noticeable cold-start cost on each hook
+ * invocation because it has to dynamically load on demand.
  */
 export class AgentSdkClient implements IModelClient {
   private readonly config: Config
